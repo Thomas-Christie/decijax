@@ -1,0 +1,146 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "decijax"
+dynamic = ["version"]
+description = 'Sequential decision-making in JAX.'
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["gaussian-processes", "jax", "decision-making"]
+authors = [{ name = "Thomas Christie", email = "thomashamish@hotmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "gpjax>=0.11.0",
+  "beartype>0.16.1",
+  "jax>=0.5.0",
+  "jaxlib>=0.5.0",
+  "optax>0.2.1",
+  "jaxtyping>0.2.10",
+  "equinox>=0.11.0",
+  "numpy>=2.0.0",
+  "numpyro>=0.19.0",
+  "scipy>=1.13.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.6",
+  "pre-commit>=3.2.2",
+  "interrogate>=1.5.0",
+  "codespell>=2.2.4",
+  "pytest>=7.2.2",
+  "pytest-cov>=4.0.0",
+  "pytest-pretty>=1.1.1",
+  "pytest-xdist>=3.2.1",
+  "coverage>=7.2.2",
+  "absolufy-imports>=0.3.1",
+  "xdoctest>=1.1.1",
+  "mktestdocs>=0.2.1",
+  "jupytext",
+]
+
+[project.urls]
+Issues = "https://github.com/Thomas-Christie/decijax/issues"
+Source = "https://github.com/Thomas-Christie/decijax"
+
+[tool.hatch.version]
+path = "src/decijax/__about__.py"
+
+[tool.coverage.run]
+source_pkgs = ["decijax", "tests"]
+branch = true
+parallel = true
+omit = ["src/decijax/__about__.py"]
+
+[tool.coverage.paths]
+decijax = ["src/decijax", "*/decijax/src/decijax"]
+tests = ["tests", "*/decijax/tests"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.pytest.ini_options] # https://docs.pytest.org/en/latest/reference/reference.html#ini-options-ref
+filterwarnings = [
+  "error",
+  "ignore::DeprecationWarning",
+  "ignore:The balance properties of Sobol:UserWarning",
+]
+testpaths = ["tests"]
+xfail_strict = true
+
+[tool.ruff] # https://github.com/charliermarsh/ruff
+fix = true
+cache-dir = "~/.cache/ruff"
+exclude = ["docs/", "examples/"]
+line-length = 88
+src = ["src/decijax", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^_$"
+select = [
+  "F",
+  # pycodestyle
+  "E",
+  "W",
+  # flake8-2020
+  "YTT",
+  # flake8-bugbear
+  "B",
+  # flake8-quotes
+  "Q",
+  # pylint
+  "PLE",
+  "PLR",
+  "PLW",
+  # misc lints
+  "PIE",
+  # flake8-pyi
+  "PYI",
+  # tidy imports
+  "TID",
+  # implicit string concatenation
+  "ISC",
+]
+ignore = [
+  # calls in argument defaults
+  "B008",
+  # space before : (needed for how black formats slicing)
+  # "E203",  # not yet implemented
+  # module level import not at top of file
+  "E402",
+  # do not assign a lambda expression, use a def
+  "E731",
+  "E501",
+  "S303",
+  "S307",
+  "RET504",
+  "S101",
+  "F722",
+  'PLR2004',
+  "PLR0913",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = true
+fail-under = 64
+exclude = ["setup.py", "docs", "tests", "decijax/__init__.py"]
+verbose = 2
+quiet = false
+color = true
