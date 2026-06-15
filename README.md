@@ -7,6 +7,10 @@ probability of improvement, expected improvement and Thompson sampling. The
 implementations are built upon the JAX library, enabling automatic differentiation,
 vectorisation, and just-in-time (JIT) compilation for high performance. This allows for efficient research, development, and deployment of decision-making agents.
 
+> [!WARNING]
+> `decijax` is currently under active development, and the API is likely to
+> change in the near future.
+
 -----
 
 ## Table of Contents
