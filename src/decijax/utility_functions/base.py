@@ -2,22 +2,24 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from typing import TypeAlias
 
 from beartype.typing import (
     Callable,
     Mapping,
 )
-from gpjax.dataset import Dataset
-from gpjax.gps import AbstractPosterior
-from gpjax.typing import (
+from jaxtyping import (
     Array,
     Float,
-    KeyArray,
+    Key,
 )
 
+from decijax.models import ProbabilisticModel
 from decijax.utils import OBJECTIVE
 
-SinglePointUtilityFunction = Callable[[Float[Array, "N D"]], Float[Array, "N 1"]]
+SinglePointUtilityFunction: TypeAlias = Callable[
+    [Float[Array, "N D"]], Float[Array, "N 1"]
+]
 """
 Type alias for utility functions which don't support batching, and instead characterise
 the utility of querying a single point, rather than a batch of points. They take an array of points of shape $[N, D]$
@@ -25,7 +27,7 @@ and return the value of the utility function at each point in an array of shape 
 """
 
 
-UtilityFunction = SinglePointUtilityFunction
+UtilityFunction: TypeAlias = SinglePointUtilityFunction
 """
 Type alias for all utility functions. Currently we only support
 `SinglePointUtilityFunction`s, but in future may support batched utility functions too.
@@ -41,39 +43,32 @@ class AbstractSinglePointUtilityFunctionBuilder(ABC):
 
     def check_objective_present(
         self,
-        posteriors: Mapping[str, AbstractPosterior],
-        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
     ) -> None:
         """
-        Check that the objective posterior and dataset are present in the posteriors and
-        datasets.
+        Check that the objective model is present in the models.
 
         Args:
-            posteriors: dictionary of posteriors to be used to form the utility function.
-            datasets: dictionary of datasets which may be used to form the utility function.
+            models: dictionary of models to be used to form the utility function.
 
         Raises:
-            ValueError: If the objective posterior or dataset are not present in the
-                posteriors or datasets.
+            ValueError: If the objective model is not present in the models.
         """
-        if OBJECTIVE not in posteriors.keys():
-            raise ValueError("Objective posterior not found in posteriors")
-        elif OBJECTIVE not in datasets.keys():
-            raise ValueError("Objective dataset not found in datasets")
+        if OBJECTIVE not in models.keys():
+            raise ValueError("Objective model not found in models")
 
     @abstractmethod
     def build_utility_function(
         self,
-        posteriors: Mapping[str, AbstractPosterior],
-        datasets: Mapping[str, Dataset],
-        key: KeyArray,
+        models: Mapping[str, ProbabilisticModel],
+        key: Key[Array, ""],
     ) -> SinglePointUtilityFunction:
         """
-        Build a `UtilityFunction` from a set of posteriors and datasets.
+        Build a `UtilityFunction` from a set of models.
 
         Args:
-            posteriors: dictionary of posteriors to be used to form the utility function.
-            datasets: dictionary of datasets which may be used to form the utility function.
+            models: dictionary of models to be used to form the utility function. Each
+                model carries the data it was conditioned on.
             key: JAX PRNG key used for random number generation.
 
         Returns:

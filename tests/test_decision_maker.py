@@ -3,18 +3,15 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 import gpjax as gpx
-from gpjax.dataset import Dataset
-from gpjax.typing import KeyArray
 import jax.numpy as jnp
 import jax.random as jr
 import optax as ox
 import pytest
-
 from decijax.decision_maker import (
     AbstractDecisionMaker,
     UtilityDrivenDecisionMaker,
 )
-from decijax.posterior_handler import PosteriorHandler
+from decijax.models import GPJaxConjugateGPBuilder
 from decijax.search_space import (
     AbstractSearchSpace,
     ContinuousSearchSpace,
@@ -32,6 +29,9 @@ from decijax.utils import (
     OBJECTIVE,
     build_function_evaluator,
 )
+from gpjax.dataset import Dataset
+from gpjax.typing import KeyArray
+
 from tests.utils import QuadraticSinglePointUtilityFunctionBuilder
 
 CONSTRAINT = "CONSTRAINT"
@@ -46,7 +46,7 @@ def search_space() -> ContinuousSearchSpace:
 
 
 @pytest.fixture
-def posterior_handler() -> PosteriorHandler:
+def model_builder() -> GPJaxConjugateGPBuilder:
     mean = gpx.mean_functions.Zero()
     kernel = gpx.kernels.Matern52(
         lengthscale=jnp.array(1.0),
@@ -57,14 +57,13 @@ def posterior_handler() -> PosteriorHandler:
     likelihood_builder = lambda x: gpx.likelihoods.Gaussian(
         num_datapoints=x, obs_stddev=jnp.array(1e-3)
     )
-    posterior_handler = PosteriorHandler(
+    return GPJaxConjugateGPBuilder(
         prior=prior,
         likelihood_builder=likelihood_builder,
         optimization_objective=gpx.objectives.conjugate_mll,
         optimizer=ox.adam(learning_rate=0.01),
         num_optimization_iters=100,
     )
-    return posterior_handler
 
 
 @pytest.fixture
@@ -74,7 +73,7 @@ def utility_function_builder() -> AbstractSinglePointUtilityFunctionBuilder:
 
 @pytest.fixture
 def thompson_sampling_utility_function_builder() -> ThompsonSampling:
-    return ThompsonSampling(num_features=100)
+    return ThompsonSampling()
 
 
 @pytest.fixture
@@ -98,19 +97,19 @@ def test_abstract_decision_maker_raises_error():
 @pytest.mark.parametrize("batch_size", [0, -1, -10])
 def test_invalid_batch_size_raises_error(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
     batch_size: int,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     with pytest.raises(ValueError):
         UtilityDrivenDecisionMaker(
             search_space=search_space,
-            posterior_handlers=posterior_handlers,
+            model_builders=model_builders,
             datasets=datasets,
             utility_function_builder=utility_function_builder,
             utility_maximizer=utility_maximizer,
@@ -123,18 +122,18 @@ def test_invalid_batch_size_raises_error(
 
 def test_non_thompson_sampling_non_one_batch_size_raises_error(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     with pytest.raises(NotImplementedError):
         UtilityDrivenDecisionMaker(
             search_space=search_space,
-            posterior_handlers=posterior_handlers,
+            model_builders=model_builders,
             datasets=datasets,
             utility_function_builder=utility_function_builder,
             utility_maximizer=utility_maximizer,
@@ -147,18 +146,18 @@ def test_non_thompson_sampling_non_one_batch_size_raises_error(
 
 def test_invalid_tags_raises_error(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     dataset = get_dataset(num_points=5, key=jr.key(42))
-    datasets = {"CONSTRAINT": dataset}  # Dataset tag doesn't match posterior tag
+    datasets = {"CONSTRAINT": dataset}  # Dataset tag doesn't match model builder tag
     with pytest.raises(ValueError):
         UtilityDrivenDecisionMaker(
             search_space=search_space,
-            posterior_handlers=posterior_handlers,
+            model_builders=model_builders,
             datasets=datasets,
             utility_function_builder=utility_function_builder,
             utility_maximizer=utility_maximizer,
@@ -169,20 +168,20 @@ def test_invalid_tags_raises_error(
         )
 
 
-def test_initialisation_optimizes_posterior_hyperparameters(
+def test_initialisation_optimizes_model_hyperparameters(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler, CONSTRAINT: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     constraint_dataset = get_dataset(num_points=5, key=jr.key(10))
     datasets = {"OBJECTIVE": objective_dataset, CONSTRAINT: constraint_dataset}
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=datasets,
         utility_function_builder=utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -191,38 +190,30 @@ def test_initialisation_optimizes_posterior_hyperparameters(
         post_tell=[],
         batch_size=1,
     )
+    objective_prior = decision_maker.models[OBJECTIVE].posterior.prior
+    constraint_prior = decision_maker.models[CONSTRAINT].posterior.prior
     # Assert kernel hyperparameters get changed from their initial values
-    assert decision_maker.posteriors[OBJECTIVE].prior.kernel.lengthscale != jnp.array(
-        1.0
-    )
-    assert decision_maker.posteriors[OBJECTIVE].prior.kernel.variance != jnp.array(1.0)
-    assert decision_maker.posteriors[CONSTRAINT].prior.kernel.lengthscale != jnp.array(
-        1.0
-    )
-    assert decision_maker.posteriors[CONSTRAINT].prior.kernel.variance != jnp.array(1.0)
-    assert (
-        decision_maker.posteriors[CONSTRAINT].prior.kernel.lengthscale
-        != decision_maker.posteriors[OBJECTIVE].prior.kernel.lengthscale
-    )
-    assert (
-        decision_maker.posteriors[CONSTRAINT].prior.kernel.variance
-        != decision_maker.posteriors[OBJECTIVE].prior.kernel.variance
-    )
+    assert objective_prior.kernel.lengthscale != jnp.array(1.0)
+    assert objective_prior.kernel.variance != jnp.array(1.0)
+    assert constraint_prior.kernel.lengthscale != jnp.array(1.0)
+    assert constraint_prior.kernel.variance != jnp.array(1.0)
+    assert constraint_prior.kernel.lengthscale != objective_prior.kernel.lengthscale
+    assert constraint_prior.kernel.variance != objective_prior.kernel.variance
 
 
 def test_decision_maker_ask(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=datasets,
         utility_function_builder=utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -244,18 +235,18 @@ def test_decision_maker_ask(
 @pytest.mark.parametrize("batch_size", [1, 2, 5])
 def test_decision_maker_ask_multi_batch_ts(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     thompson_sampling_utility_function_builder: ThompsonSampling,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
     batch_size: int,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=datasets,
         utility_function_builder=thompson_sampling_utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -280,12 +271,12 @@ def test_decision_maker_ask_multi_batch_ts(
 
 def test_decision_maker_tell_with_inconsistent_observations_raises_error(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler, CONSTRAINT: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
     initial_objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     initial_constraint_dataset = get_dataset(num_points=5, key=jr.key(10))
     datasets = {
@@ -294,7 +285,7 @@ def test_decision_maker_tell_with_inconsistent_observations_raises_error(
     }
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=datasets,
         utility_function_builder=utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -315,12 +306,12 @@ def test_decision_maker_tell_with_inconsistent_observations_raises_error(
 
 def test_decision_maker_tell_updates_datasets_and_models(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler, CONSTRAINT: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
     initial_objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     initial_constraint_dataset = get_dataset(num_points=5, key=jr.key(10))
     datasets = {
@@ -329,7 +320,7 @@ def test_decision_maker_tell_updates_datasets_and_models(
     }
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=datasets,
         utility_function_builder=utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -339,8 +330,8 @@ def test_decision_maker_tell_updates_datasets_and_models(
         batch_size=1,
     )
     initial_decision_maker_key = decision_maker.key
-    initial_objective_posterior = decision_maker.posteriors[OBJECTIVE]
-    initial_constraint_posterior = decision_maker.posteriors[CONSTRAINT]
+    initial_objective_prior = decision_maker.models[OBJECTIVE].posterior.prior
+    initial_constraint_prior = decision_maker.models[CONSTRAINT].posterior.prior
     mock_objective_observation = get_dataset(num_points=1, key=jr.key(1))
     mock_constraint_observation = get_dataset(num_points=1, key=jr.key(2))
     observations = {
@@ -352,21 +343,23 @@ def test_decision_maker_tell_updates_datasets_and_models(
     assert decision_maker.datasets[CONSTRAINT].n == 6
     assert decision_maker.datasets[OBJECTIVE].X[-1] == mock_objective_observation.X[0]
     assert decision_maker.datasets[CONSTRAINT].X[-1] == mock_constraint_observation.X[0]
+    updated_objective_prior = decision_maker.models[OBJECTIVE].posterior.prior
+    updated_constraint_prior = decision_maker.models[CONSTRAINT].posterior.prior
     assert (
-        decision_maker.posteriors[OBJECTIVE].prior.kernel.lengthscale
-        != initial_objective_posterior.prior.kernel.lengthscale
+        updated_objective_prior.kernel.lengthscale
+        != initial_objective_prior.kernel.lengthscale
     )
     assert (
-        decision_maker.posteriors[OBJECTIVE].prior.kernel.variance
-        != initial_objective_posterior.prior.kernel.variance
+        updated_objective_prior.kernel.variance
+        != initial_objective_prior.kernel.variance
     )
     assert (
-        decision_maker.posteriors[CONSTRAINT].prior.kernel.lengthscale
-        != initial_constraint_posterior.prior.kernel.lengthscale
+        updated_constraint_prior.kernel.lengthscale
+        != initial_constraint_prior.kernel.lengthscale
     )
     assert (
-        decision_maker.posteriors[CONSTRAINT].prior.kernel.variance
-        != initial_constraint_posterior.prior.kernel.variance
+        updated_constraint_prior.kernel.variance
+        != initial_constraint_prior.kernel.variance
     )
     assert (
         decision_maker.key == initial_decision_maker_key
@@ -376,20 +369,20 @@ def test_decision_maker_tell_updates_datasets_and_models(
 @pytest.mark.parametrize("n_steps", [1, 3])
 def test_decision_maker_run(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
     n_steps: int,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     initial_objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     initial_datasets = {
         "OBJECTIVE": initial_objective_dataset,
     }
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=initial_datasets,
         utility_function_builder=utility_function_builder,
         utility_maximizer=utility_maximizer,
@@ -420,21 +413,21 @@ def test_decision_maker_run(
 @pytest.mark.parametrize("batch_size", [1, 3])
 def test_decision_maker_run_ts(
     search_space: AbstractSearchSpace,
-    posterior_handler: PosteriorHandler,
+    model_builder: GPJaxConjugateGPBuilder,
     thompson_sampling_utility_function_builder: ThompsonSampling,
     utility_maximizer: AbstractSinglePointUtilityMaximizer,
     n_steps: int,
     batch_size: int,
 ):
     key = jr.key(42)
-    posterior_handlers = {OBJECTIVE: posterior_handler}
+    model_builders = {OBJECTIVE: model_builder}
     initial_objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     initial_datasets = {
         "OBJECTIVE": initial_objective_dataset,
     }
     decision_maker = UtilityDrivenDecisionMaker(
         search_space=search_space,
-        posterior_handlers=posterior_handlers,
+        model_builders=model_builders,
         datasets=initial_datasets,
         utility_function_builder=thompson_sampling_utility_function_builder,
         utility_maximizer=utility_maximizer,

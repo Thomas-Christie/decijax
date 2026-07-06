@@ -8,11 +8,7 @@ config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-from gpjax.typing import (
-    Array,
-    Float,
-    KeyArray,
-)
+from decijax.models import GPJaxConjugateGP
 from decijax.test_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -22,6 +18,11 @@ from decijax.utils import (
     OBJECTIVE,
     build_function_evaluator,
     get_best_latent_observation_val,
+)
+from gpjax.typing import (
+    Array,
+    Float,
+    KeyArray,
 )
 
 
@@ -47,7 +48,7 @@ def test_build_function_evaluator():
     "test_target_function",
     [(NegativeForrester()), (NegativeLogarithmicGoldsteinPrice())],
 )
-@pytest.mark.parametrize("key", [jr.PRNGKey(42), jr.PRNGKey(10)])
+@pytest.mark.parametrize("key", [jr.key(42), jr.key(10)])
 def test_get_best_observation(
     test_target_function: AbstractContinuousTestFunction,
     key: KeyArray,
@@ -61,8 +62,7 @@ def test_get_best_observation(
     prior = Prior(kernel=kernel, mean_function=mean_fn)
     likelihood = Gaussian(num_datapoints=dataset.n, obs_stddev=obs_stddev)
     posterior = prior * likelihood
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
     expected_best_obs = jnp.max(posterior(dataset.X, dataset).mean)
-    actual_best_obs = get_best_latent_observation_val(
-        posterior=posterior, dataset=dataset
-    )
-    assert jnp.equal(expected_best_obs, actual_best_obs)
+    actual_best_obs = get_best_latent_observation_val(model)  # [S, 1] == [1, 1]
+    assert jnp.equal(expected_best_obs, actual_best_obs.squeeze())

@@ -2,7 +2,14 @@ from decijax.decision_maker import (
     AbstractDecisionMaker,
     UtilityDrivenDecisionMaker,
 )
-from decijax.posterior_handler import PosteriorHandler
+from decijax.models import (
+    AbstractModelBuilder,
+    GPJaxConjugateGP,
+    GPJaxConjugateGPBuilder,
+    ProbabilisticModel,
+    SupportsGaussianPrediction,
+    SupportsSamplePaths,
+)
 from decijax.search_space import (
     AbstractSearchSpace,
     ContinuousSearchSpace,
@@ -16,6 +23,8 @@ from decijax.test_functions import (
 from decijax.utility_functions import (
     AbstractSinglePointUtilityFunctionBuilder,
     AbstractUtilityFunctionBuilder,
+    ExpectedImprovement,
+    ProbabilityOfImprovement,
     SinglePointUtilityFunction,
     ThompsonSampling,
     UtilityFunction,
@@ -31,6 +40,7 @@ __all__ = [
     "AbstractUtilityFunctionBuilder",
     "AbstractUtilityMaximizer",
     "AbstractDecisionMaker",
+    "AbstractModelBuilder",
     "AbstractSearchSpace",
     "AbstractSinglePointUtilityFunctionBuilder",
     "AbstractSinglePointUtilityMaximizer",
@@ -38,12 +48,18 @@ __all__ = [
     "build_function_evaluator",
     "ContinuousSinglePointUtilityMaximizer",
     "ContinuousSearchSpace",
+    "ExpectedImprovement",
+    "GPJaxConjugateGP",
+    "GPJaxConjugateGPBuilder",
     "UtilityDrivenDecisionMaker",
     "AbstractContinuousTestFunction",
     "NegativeForrester",
     "NegativeLogarithmicGoldsteinPrice",
-    "PosteriorHandler",
     "NegativeQuadratic",
+    "ProbabilisticModel",
+    "ProbabilityOfImprovement",
     "SinglePointUtilityFunction",
+    "SupportsGaussianPrediction",
+    "SupportsSamplePaths",
     "ThompsonSampling",
 ]

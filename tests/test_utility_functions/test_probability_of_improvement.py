@@ -5,6 +5,7 @@ config.update("jax_enable_x64", True)
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import NegativeForrester
 from decijax.utility_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
@@ -19,13 +20,11 @@ def test_probability_of_improvement_gives_correct_value_for_a_seed():
     neg_forrester = NegativeForrester()
     dataset = neg_forrester.generate_dataset(num_points=10, key=key)
     posterior = generate_dummy_conjugate_posterior(dataset, neg_forrester)
-    posteriors = {OBJECTIVE: posterior}
-    datasets = {OBJECTIVE: dataset}
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    models = {OBJECTIVE: model}
 
     pi_utility_builder = ProbabilityOfImprovement()
-    pi_utility = pi_utility_builder.build_utility_function(
-        posteriors=posteriors, datasets=datasets, key=key
-    )
+    pi_utility = pi_utility_builder.build_utility_function(models, key)
 
     test_X = neg_forrester.generate_test_points(num_points=10, key=key)
     utility_values = pi_utility(test_X)

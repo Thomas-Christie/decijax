@@ -1,14 +1,16 @@
 import jax.numpy as jnp
-import numpyro.distributions as dist
 from beartype.typing import Mapping
-from gpjax.dataset import Dataset
-from gpjax.gps import ConjugatePosterior
-from gpjax.typing import (
+from jax.scipy.stats import norm
+from jaxtyping import (
     Array,
     Float,
-    KeyArray,
+    Key,
 )
 
+from decijax.models import (
+    ProbabilisticModel,
+    SupportsGaussianPrediction,
+)
 from decijax.utility_functions.base import (
     AbstractSinglePointUtilityFunctionBuilder,
     SinglePointUtilityFunction,
@@ -29,9 +31,8 @@ class ExpectedImprovement(AbstractSinglePointUtilityFunctionBuilder):
 
     def build_utility_function(
         self,
-        posteriors: Mapping[str, ConjugatePosterior],
-        datasets: Mapping[str, Dataset],
-        key: KeyArray,
+        models: Mapping[str, ProbabilisticModel],
+        key: Key[Array, ""],
     ) -> SinglePointUtilityFunction:
         r"""
         Build the Expected Improvement acquisition function. This computes the expected
@@ -43,49 +44,40 @@ class ExpectedImprovement(AbstractSinglePointUtilityFunctionBuilder):
         \alpha_{\text{EI}}(\mathbf{x}) = \mathbb{E}\left[\max(0, f(\mathbf{x}) - \eta)\right]
         ```
 
+        For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
+        expected improvement is computed per sample and averaged, which is the correct
+        marginalisation $`\mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]`$.
+
         Args:
-            posteriors (Mapping[str, ConjugatePosterior]): Dictionary of posteriors to
-            used to form the utility function. One posteriors must correspond to the
-            `OBJECTIVE` key, as we utilise the objective posterior to form the utility
-            function.
-            datasets (Mapping[str, Dataset]): Dictionary of datasets used to form the
-            utility function. Keys in `datasets` should correspond to keys in
-            `posteriors`. One of the datasets must correspond to the `OBJECTIVE` key.
-            key (KeyArray): JAX PRNG key used for random number generation.
+            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
+            the utility function. One model must correspond to the `OBJECTIVE` key and
+            support Gaussian prediction, as we use the objective posterior to form the
+            utility function.
+            key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
+            the expected improvement is computed deterministically, the key is not used.
 
         Returns:
             SinglePointUtilityFunction: The Expected Improvement acquisition function to
             to be *maximised* in order to decide which point to query next.
         """
-        self.check_objective_present(posteriors, datasets)
-        objective_posterior = posteriors[OBJECTIVE]
-        objective_dataset = datasets[OBJECTIVE]
+        self.check_objective_present(models)
+        objective_model = models[OBJECTIVE]
 
-        if not isinstance(objective_posterior, ConjugatePosterior):
+        if not isinstance(objective_model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective posterior must be a ConjugatePosterior to compute the Expected Improvement."
+                "Objective model must support Gaussian prediction to compute the "
+                "Expected Improvement."
             )
 
-        if (
-            objective_dataset.X is None
-            or objective_dataset.n == 0
-            or objective_dataset.y is None
-        ):
-            raise ValueError("Objective dataset must contain at least one item")
-
-        eta = get_best_latent_observation_val(objective_posterior, objective_dataset)
+        eta = get_best_latent_observation_val(objective_model)  # [S, 1]
 
         def _expected_improvement(x: Float[Array, "N D"]) -> Float[Array, "N 1"]:
-            latent_dist = objective_posterior(x, objective_dataset)
-            mean = latent_dist.mean
-            var = latent_dist.variance
-            normal = dist.Normal(mean, jnp.sqrt(var))
-            return jnp.expand_dims(
-                (
-                    (mean - eta) * (1 - normal.cdf(eta))
-                    + var * jnp.exp(normal.log_prob(eta))
-                ),
-                -1,
-            )
+            latent_dist = objective_model.predict(x)
+            mean = latent_dist.mean  # [S, N]
+            std = latent_dist.stddev  # [S, N]
+            z = (mean - eta) / std
+            # Canonical EI: (mu - eta) * Phi(z) + sigma * phi(z), per sample [S, N].
+            ei = (mean - eta) * norm.cdf(z) + std * norm.pdf(z)
+            return jnp.mean(ei, axis=0)[:, None]  # marginalise over S -> [N, 1]
 
         return _expected_improvement

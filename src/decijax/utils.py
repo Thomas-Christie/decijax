@@ -5,11 +5,12 @@ from beartype.typing import (
     Final,
 )
 from gpjax.dataset import Dataset
-from gpjax.gps import AbstractPosterior
 from gpjax.typing import (
     Array,
     Float,
 )
+
+from decijax.models import SupportsGaussianPrediction
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
 """
@@ -38,12 +39,17 @@ def build_function_evaluator(
 
 
 def get_best_latent_observation_val(
-    posterior: AbstractPosterior, dataset: Dataset
-) -> Float[Array, ""]:
+    model: SupportsGaussianPrediction,
+) -> Float[Array, "S 1"]:
     """
-    Takes a posterior and dataset and returns the best (latent) function value in the
-    dataset, corresponding to the maximum of the posterior mean value evaluated at
-    locations in the dataset. In the noiseless case, this corresponds to the maximum
-    value in the dataset.
+    Returns the best (latent) incumbent value for each posterior sample, defined as
+    the maximum of the predictive mean evaluated at the model's observed inputs. In
+    the noiseless case this corresponds to the maximum observed value.
+
+    The leading sample axis ``S`` is preserved (``S == 1`` for point-estimate
+    models, ``S`` = number of hyperparameter samples for fully Bayesian models), so
+    expectation-based acquisitions can compute their incumbent per sample before
+    marginalising.
     """
-    return jnp.max(posterior(dataset.X, dataset).mean)
+    latent_at_observed = model.predict(model.training_inputs).mean  # [S, N]
+    return jnp.max(latent_at_observed, axis=-1, keepdims=True)  # [S, 1]

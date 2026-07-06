@@ -1,13 +1,16 @@
-import numpyro.distributions as dist
+import jax.numpy as jnp
 from beartype.typing import Mapping
-from gpjax.dataset import Dataset
-from gpjax.gps import ConjugatePosterior
-from gpjax.typing import (
+from jax.scipy.stats import norm
+from jaxtyping import (
     Array,
-    KeyArray,
+    Float,
+    Key,
 )
-from jaxtyping import Num
 
+from decijax.models import (
+    ProbabilisticModel,
+    SupportsGaussianPrediction,
+)
 from decijax.utility_functions.base import (
     AbstractSinglePointUtilityFunctionBuilder,
     SinglePointUtilityFunction,
@@ -48,61 +51,45 @@ class ProbabilityOfImprovement(AbstractSinglePointUtilityFunctionBuilder):
 
     def build_utility_function(
         self,
-        posteriors: Mapping[str, ConjugatePosterior],
-        datasets: Mapping[str, Dataset],
-        key: KeyArray,
+        models: Mapping[str, ProbabilisticModel],
+        key: Key[Array, ""],
     ) -> SinglePointUtilityFunction:
         """
         Constructs the probability of improvement utility function
         using the predictive posterior of the objective function.
 
+        For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
+        probability of improvement is computed per sample and averaged.
+
         Args:
-            posteriors (Mapping[str, AbstractPosterior]): Dictionary of posteriors to be
-            used to form the utility function. One of the posteriors must correspond
-            to the `OBJECTIVE` key, as we sample from the objective posterior to form
-            the utility function.
-            datasets (Mapping[str, Dataset]): Dictionary of datasets which may be used
-            to form the utility function. Keys in `datasets` should correspond to
-            keys in `posteriors`. One of the datasets must correspond
-            to the `OBJECTIVE` key.
-            key (KeyArray): JAX PRNG key used for random number generation. Since
-            the probability of improvement is computed deterministically
-            from the predictive posterior, the key is not used.
+            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
+            the utility function. One model must correspond to the `OBJECTIVE` key and
+            support Gaussian prediction.
+            key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
+            the probability of improvement is computed deterministically from the
+            predictive posterior, the key is not used.
 
         Returns:
             SinglePointUtilityFunction: the probability of improvement utility function.
         """
-        self.check_objective_present(posteriors, datasets)
+        self.check_objective_present(models)
+        objective_model = models[OBJECTIVE]
 
-        objective_posterior = posteriors[OBJECTIVE]
-        if not isinstance(objective_posterior, ConjugatePosterior):
+        if not isinstance(objective_model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective posterior must be a ConjugatePosterior to compute the Probability of Improvement using a Gaussian CDF."
+                "Objective model must support Gaussian prediction to compute the "
+                "Probability of Improvement using a Gaussian CDF."
             )
 
-        objective_dataset = datasets[OBJECTIVE]
-        if (
-            objective_dataset.X is None
-            or objective_dataset.n == 0
-            or objective_dataset.y is None
-        ):
-            raise ValueError(
-                "Objective dataset must be non-empty to compute the "
-                "Probability of Improvement (since we need a "
-                "`best_y` value)."
-            )
+        best_y = get_best_latent_observation_val(objective_model)  # [S, 1]
 
-        def probability_of_improvement(x_test: Num[Array, "N D"]):
-            best_y = get_best_latent_observation_val(
-                objective_posterior, objective_dataset
-            )
-            predictive_dist = objective_posterior.predict(x_test, objective_dataset)
+        def _probability_of_improvement(
+            x: Float[Array, "N D"],
+        ) -> Float[Array, "N 1"]:
+            predictive_dist = objective_model.predict(x)
+            mean = predictive_dist.mean  # [S, N]
+            std = predictive_dist.stddev  # [S, N]
+            pi = 1.0 - norm.cdf((best_y - mean) / std)  # [S, N]
+            return jnp.mean(pi, axis=0)[:, None]  # marginalise over S -> [N, 1]
 
-            normal_dist = dist.Normal(
-                loc=predictive_dist.mean,
-                scale=predictive_dist.stddev(),
-            )
-
-            return (1 - normal_dist.cdf(best_y)).reshape(-1, 1)
-
-        return probability_of_improvement
+        return _probability_of_improvement

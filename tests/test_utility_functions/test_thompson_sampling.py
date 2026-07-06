@@ -2,11 +2,10 @@ from jax import config
 
 config.update("jax_enable_x64", True)
 
-from beartype.typing import Callable
-from gpjax.typing import KeyArray
 import jax.random as jr
 import pytest
-
+from beartype.typing import Callable
+from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -14,24 +13,22 @@ from decijax.test_functions.continuous_functions import (
 )
 from decijax.utility_functions.thompson_sampling import ThompsonSampling
 from decijax.utils import OBJECTIVE
+from gpjax.typing import KeyArray
+
 from tests.utils import generate_dummy_conjugate_posterior
 
 
 @pytest.mark.parametrize("num_rff_features", [0, -1, -10])
-@pytest.mark.filterwarnings(
-    "ignore::UserWarning"
-)  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
-def test_thompson_sampling_invalid_rff_num_raises_error(num_rff_features: int):
+def test_invalid_rff_num_on_model_raises_error(num_rff_features: int):
+    # The number of random Fourier features is now owned by the model, so the
+    # validation lives on the model rather than on ThompsonSampling.
     key = jr.key(42)
     neg_forrester = NegativeForrester()
     dataset = neg_forrester.generate_dataset(num_points=10, key=key)
     posterior = generate_dummy_conjugate_posterior(dataset)
-    posteriors = {OBJECTIVE: posterior}
-    datasets = {OBJECTIVE: dataset}
     with pytest.raises(ValueError):
-        ts_utility_builder = ThompsonSampling(num_features=num_rff_features)
-        ts_utility_builder.build_utility_function(
-            posteriors=posteriors, datasets=datasets, key=key
+        GPJaxConjugateGP(
+            posterior=posterior, dataset=dataset, num_features=num_rff_features
         )
 
 
@@ -51,16 +48,10 @@ def test_thompson_sampling_utility_function_same_key_same_function(
 ):
     dataset = test_target_function.generate_dataset(num_points=10, key=key)
     posterior = generate_dummy_conjugate_posterior(dataset)
-    posteriors = {OBJECTIVE: posterior}
-    datasets = {OBJECTIVE: dataset}
-    ts_utility_builder_one = ThompsonSampling(num_features=100)
-    ts_utility_builder_two = ThompsonSampling(num_features=100)
-    ts_utility_function_one = ts_utility_builder_one.build_utility_function(
-        posteriors=posteriors, datasets=datasets, key=key
-    )
-    ts_utility_function_two = ts_utility_builder_two.build_utility_function(
-        posteriors=posteriors, datasets=datasets, key=key
-    )
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
+    models = {OBJECTIVE: model}
+    ts_utility_function_one = ThompsonSampling().build_utility_function(models, key)
+    ts_utility_function_two = ThompsonSampling().build_utility_function(models, key)
     test_key, _ = jr.split(key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     ts_utility_function_one_values = ts_utility_function_one(test_X)
@@ -86,16 +77,16 @@ def test_thompson_sampling_utility_function_different_key_different_function(
 ):
     dataset = test_target_function.generate_dataset(num_points=10, key=key)
     posterior = generate_dummy_conjugate_posterior(dataset)
-    posteriors = {OBJECTIVE: posterior}
-    datasets = {OBJECTIVE: dataset}
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
+    models = {OBJECTIVE: model}
     sample_one_key = key
     sample_two_key, _ = jr.split(key)
-    ts_utility_builder = ThompsonSampling(num_features=100)
+    ts_utility_builder = ThompsonSampling()
     ts_utility_function_one = ts_utility_builder.build_utility_function(
-        posteriors=posteriors, datasets=datasets, key=sample_one_key
+        models, sample_one_key
     )
     ts_utility_function_two = ts_utility_builder.build_utility_function(
-        posteriors=posteriors, datasets=datasets, key=sample_two_key
+        models, sample_two_key
     )
     test_key, _ = jr.split(sample_two_key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)

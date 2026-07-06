@@ -12,7 +12,6 @@ from beartype.typing import (
     Mapping,
 )
 from gpjax.dataset import Dataset
-from gpjax.gps import AbstractPosterior
 from gpjax.typing import (
     Array,
     Float,
@@ -21,7 +20,10 @@ from gpjax.typing import (
 import jax.numpy as jnp
 import jax.random as jr
 
-from decijax.posterior_handler import PosteriorHandler
+from decijax.models import (
+    AbstractModelBuilder,
+    ProbabilisticModel,
+)
 from decijax.search_space import AbstractSearchSpace
 from decijax.utility_functions import (
     AbstractUtilityFunctionBuilder,
@@ -45,16 +47,16 @@ class AbstractDecisionMaker(ABC):
 
     Attributes:
         search_space: Search space over which we can evaluate the function(s) of interest.
-        posterior_handlers: dictionary of posterior handlers, which are used to update
-            posteriors throughout the decision making loop. Note that the word `posteriors`
-            is used for consistency with GPJax, but these objects are typically referred to
+        model_builders: dictionary of model builders, which are used to (re)fit models
+            throughout the decision making loop. These objects are typically referred to
             as `models` in the model-based decision making literature. Tags are used to
-            distinguish between posteriors. In a typical Bayesian optimisation setup one of
+            distinguish between models. In a typical Bayesian optimisation setup one of
             the tags will be `OBJECTIVE`, defined in `decision_making.utils`.
-        datasets: dictionary of datasets, which are augmented with
-            observations throughout the decision making loop. In a typical setup they are
-            also used to update the posteriors, using the `posterior_handlers`. Tags are used
-            to distinguish datasets, and correspond to tags in `posterior_handlers`.
+        datasets: dictionary of datasets, which are augmented with observations
+            throughout the decision making loop. These are the canonical record of
+            observations, in their original (untransformed) space, and are used to refit
+            the models via the `model_builders`. Tags are used to distinguish datasets,
+            and correspond to tags in `model_builders`.
         key: JAX random key, used to generate random numbers.
         batch_size: Number of points to query at each step of the decision making
             loop. Note that `SinglePointUtilityFunction`s are only capable of generating
@@ -64,7 +66,7 @@ class AbstractDecisionMaker(ABC):
     """
 
     search_space: AbstractSearchSpace
-    posterior_handlers: Dict[str, PosteriorHandler]
+    model_builders: Dict[str, AbstractModelBuilder]
     datasets: Dict[str, Dataset]
     key: KeyArray
     batch_size: int
@@ -77,9 +79,9 @@ class AbstractDecisionMaker(ABC):
 
     def __post_init__(self):
         """
-        At initialisation we check that the posterior handlers and datasets are
-        consistent (i.e. have the same tags), and then initialise the posteriors, optimizing them using the
-        corresponding datasets.
+        At initialisation we check that the model builders and datasets are
+        consistent (i.e. have the same tags), and then build the models, fitting them
+        using the corresponding datasets.
         """
         self.datasets = copy.copy(
             self.datasets
@@ -90,20 +92,18 @@ class AbstractDecisionMaker(ABC):
                 f"Batch size must be greater than 0, got {self.batch_size}."
             )
 
-        # Check that posterior handlers and datasets are consistent
-        if self.posterior_handlers.keys() != self.datasets.keys():
+        # Check that model builders and datasets are consistent
+        if self.model_builders.keys() != self.datasets.keys():
             raise ValueError(
-                "Posterior handlers and datasets must have the same keys. "
-                f"Got posterior handlers keys {self.posterior_handlers.keys()} and "
+                "Model builders and datasets must have the same keys. "
+                f"Got model builders keys {self.model_builders.keys()} and "
                 f"datasets keys {self.datasets.keys()}."
             )
 
-        # Initialize posteriors
-        self.posteriors: Dict[str, AbstractPosterior] = {}
-        for tag, posterior_handler in self.posterior_handlers.items():
-            self.posteriors[tag] = posterior_handler.get_posterior(
-                self.datasets[tag], optimize=True, key=self.key
-            )
+        # Build models
+        self.models: Dict[str, ProbabilisticModel] = {}
+        for tag, model_builder in self.model_builders.items():
+            self.models[tag] = model_builder.build(self.datasets[tag], self.key)
 
     @abstractmethod
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
@@ -120,12 +120,12 @@ class AbstractDecisionMaker(ABC):
 
     def tell(self, observation_datasets: Mapping[str, Dataset], key: KeyArray):
         """
-        Add newly observed data to datasets and update the corresponding posteriors.
+        Add newly observed data to datasets and refit the corresponding models.
 
         Args:
             observation_datasets: dictionary of datasets containing new observations.
                 Tags are used to distinguish datasets, and correspond to tags in
-                `posterior_handlers` and `self.datasets`.
+                `model_builders` and `self.datasets`.
             key: JAX PRNG key for controlling random state.
         """
         if observation_datasets.keys() != self.datasets.keys():
@@ -138,11 +138,9 @@ class AbstractDecisionMaker(ABC):
         for tag, observation_dataset in observation_datasets.items():
             self.datasets[tag] += observation_dataset
 
-        for tag, posterior_handler in self.posterior_handlers.items():
+        for tag, model_builder in self.model_builders.items():
             key, _ = jr.split(key)
-            self.posteriors[tag] = posterior_handler.update_posterior(
-                self.datasets[tag], self.posteriors[tag], optimize=True, key=key
-            )
+            self.models[tag] = model_builder.build(self.datasets[tag], key)
 
     def run(
         self, n_steps: int, black_box_function_evaluator: FunctionEvaluator
@@ -268,7 +266,7 @@ class UtilityDrivenDecisionMaker(AbstractDecisionMaker):
             for _ in range(self.batch_size):
                 decision_function = (
                     self.utility_function_builder.build_utility_function(
-                        self.posteriors, self.datasets, key
+                        self.models, key
                     )
                 )
                 self.current_utility_functions.append(decision_function)
