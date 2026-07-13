@@ -1,10 +1,12 @@
+import copy
 from abc import (
     ABC,
     abstractmethod,
 )
-import copy
 from dataclasses import dataclass
 
+import jax.numpy as jnp
+import jax.random as jr
 from beartype.typing import (
     Callable,
     Dict,
@@ -17,19 +19,17 @@ from gpjax.typing import (
     Float,
     KeyArray,
 )
-import jax.numpy as jnp
-import jax.random as jr
 
+from decijax.acquisition_functions import (
+    AbstractAcquisitionFunctionBuilder,
+    ThompsonSampling,
+)
+from decijax.acquisition_maximizer import AbstractAcquisitionMaximizer
 from decijax.models import (
     AbstractModelBuilder,
     ProbabilisticModel,
 )
 from decijax.search_space import AbstractSearchSpace
-from decijax.utility_functions import (
-    AbstractUtilityFunctionBuilder,
-    ThompsonSampling,
-)
-from decijax.utility_maximizer import AbstractUtilityMaximizer
 from decijax.utils import FunctionEvaluator
 
 
@@ -59,7 +59,7 @@ class AbstractDecisionMaker(ABC):
             and correspond to tags in `model_builders`.
         key: JAX random key, used to generate random numbers.
         batch_size: Number of points to query at each step of the decision making
-            loop. Note that `SinglePointUtilityFunction`s are only capable of generating
+            loop. Note that `SinglePointAcquisitionFunction`s are only capable of generating
             one point to be queried at each iteration of the decision making loop.
         post_ask: List of functions to be executed after each ask step.
         post_tell: List of functions to be executed after each tell step.
@@ -186,45 +186,42 @@ class AbstractDecisionMaker(ABC):
 
 
 @dataclass
-class UtilityDrivenDecisionMaker(AbstractDecisionMaker):
+class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
     """
-    UtilityDrivenDecisionMaker class which handles the core decision making loop in a
-    typical model-based decision making setup. In this setup we use surrogate model(s)
-    for the function(s) of interest, and define a utility function (often called the
-    'acquisition function' in the context of Bayesian optimisation) which characterises
-    how useful it would be to query a given point within the search space given the data
-    we have observed so far. This can then be used to decide which point(s) to query
-    next.
+    AcquisitionDrivenDecisionMaker class which handles the core decision making loop in
+    a typical model-based decision making setup. In this setup we use surrogate model(s)
+    for the function(s) of interest, and define an acquisition function which
+    characterises how useful it would be to query a given point within the search space
+    given the data we have observed so far. This can then be used to decide which
+    point(s) to query next.
 
     The decision making loop is split into two key steps, `ask` and `tell`. The `ask`
-    step forms a `UtilityFunction` from the current `posteriors` and `datasets` and
-    returns the point which maximises it. It also stores the formed utility function
-    under the attribute `self.current_utility_function` so that it can be called,
+    step forms a `AcquisitionFunction` from the current `posteriors` and `datasets` and
+    returns the point which maximises it. It also stores the formed acquisition function
+    under the attribute `self.current_acquisition_function` so that it can be called,
     for instance for plotting, after the `ask` function has been called. The `tell` step
     adds a newly queried point to the `datasets` and updates the `posteriors`.
 
     This can be run as a typical ask-tell loop, or the `run` method can be used to run
-    the decision making loop for a fixed number of steps. Moreover, the `run` method executes
-    the functions in `post_ask` and `post_tell` after each ask and tell step
+    the decision making loop for a fixed number of steps. Moreover, the `run` method
+    executes the functions in `post_ask` and `post_tell` after each ask and tell step
     respectively. This enables the user to add custom functionality, such as the ability
     to plot values of interest during the optimization process.
 
     Attributes:
-        utility_function_builder (AbstractUtilityFunctionBuilder): Object which
-                builds utility functions from posteriors and datasets, to decide where
-                to query next. In a typical Bayesian optimisation setup the point chosen to
-                be queried next is the point which maximizes the utility function.
-        utility_maximizer (AbstractUtilityMaximizer): Object which maximizes
-            utility functions over the search space.
+        acquisition_function_builder (AbstractAcquisitionFunctionBuilder): Object which
+                builds acquisition functions from posteriors and datasets, to decide where to query next. In a typical Bayesian optimisation setup the point chosen to be queried next is the point which maximizes the acquisition function.
+        acquisition_maximizer (AbstractAcquisitionMaximizer): Object which maximizes
+            acquisition functions over the search space.
     """
 
-    utility_function_builder: AbstractUtilityFunctionBuilder
-    utility_maximizer: AbstractUtilityMaximizer
+    acquisition_function_builder: AbstractAcquisitionFunctionBuilder
+    acquisition_maximizer: AbstractAcquisitionMaximizer
 
     def __post_init__(self):
         super().__post_init__()
         if self.batch_size > 1 and not isinstance(
-            self.utility_function_builder, ThompsonSampling
+            self.acquisition_function_builder, ThompsonSampling
         ):
             raise NotImplementedError(
                 "Batch size > 1 currently only supported for Thompson sampling."
@@ -232,18 +229,18 @@ class UtilityDrivenDecisionMaker(AbstractDecisionMaker):
 
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
         """
-        Get updated utility function(s) and return the point(s) which maximises it/them. This
-        method also stores the utility function(s) in
-        `self.current_utility_functions` so that they can be accessed after the ask
-        function has been called. This is useful for non-deterministic utility
+        Get updated acquisition function(s) and return the point(s) which maximises it/
+        them. This method also stores the acquisition function(s) in
+        `self.current_acquisition_functions` so that they can be accessed after the ask
+        function has been called. This is useful for non-deterministic acquisition
         functions, which may differ between calls to `ask` due to the splitting of
         `self.key`.
 
-        Note that in general `SinglePointUtilityFunction`s are only capable of
+        Note that in general `SinglePointAcquisitionFunction`s are only capable of
         generating one point to be queried at each iteration of the decision making loop
         (i.e. `self.batch_size` must be 1). However, Thompson sampling can be used in a
         batched setting by drawing a batch of different samples from the GP posterior.
-        This is done by calling `build_utility_function` with different keys
+        This is done by calling `build_acquisition_function` with different keys
         sequentilly, and optimising each of these individual samples in sequence in
         order to obtain `self.batch_size` points to query next.
 
@@ -253,26 +250,26 @@ class UtilityDrivenDecisionMaker(AbstractDecisionMaker):
         Returns:
             Float[Array, "B D"]: Point(s) to be queried next.
         """
-        self.current_utility_functions = []
+        self.current_acquisition_functions = []
         maximizers = []
         # We currently only allow Thompson sampling to be run with batch size > 1. More
-        # batched utility functions may be added in the future.
-        if isinstance(self.utility_function_builder, ThompsonSampling) or (
-            (not isinstance(self.utility_function_builder, ThompsonSampling))
+        # batched acquisition functions may be added in the future.
+        if isinstance(self.acquisition_function_builder, ThompsonSampling) or (
+            (not isinstance(self.acquisition_function_builder, ThompsonSampling))
             and (self.batch_size == 1)
         ):
             # Draw 'self.batch_size' Thompson samples and optimize each of them in order to
             # obtain 'self.batch_size' points to query next.
             for _ in range(self.batch_size):
                 decision_function = (
-                    self.utility_function_builder.build_utility_function(
+                    self.acquisition_function_builder.build_acquisition_function(
                         self.models, key
                     )
                 )
-                self.current_utility_functions.append(decision_function)
+                self.current_acquisition_functions.append(decision_function)
 
                 _, key = jr.split(key)
-                maximizer = self.utility_maximizer.maximize(
+                maximizer = self.acquisition_maximizer.maximize(
                     decision_function, self.search_space, key
                 )
                 maximizers.append(maximizer)

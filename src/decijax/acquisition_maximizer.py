@@ -16,64 +16,69 @@ from gpjax.typing import (
 )
 from scipy.optimize import minimize
 
+from decijax.acquisition_functions import SinglePointAcquisitionFunction
 from decijax.search_space import (
     AbstractSearchSpace,
     ContinuousSearchSpace,
 )
-from decijax.utility_functions import SinglePointUtilityFunction
 
 
 def _get_discrete_maximizer(
-    query_points: Float[Array, "N D"], utility_function: SinglePointUtilityFunction
+    query_points: Float[Array, "N D"],
+    acquisition_function: SinglePointAcquisitionFunction,
 ) -> Float[Array, "1 D"]:
-    """Get the point which maximises the utility function evaluated at a given set of points.
+    """Get the point which maximises the acquisition function evaluated at a given set of points.
 
     Args:
-        query_points: set of points at which to evaluate the utility function, as an array
-            of shape `[n_points, n_dims]`.
-        utility_function: the single point utility function to be evaluated at `query_points`.
+        query_points: set of points at which to evaluate the acquisition function, as
+            an array of shape `[n_points, n_dims]`.
+        acquisition_function: the single point acquisition function to be evaluated at
+            `query_points`.
 
     Returns:
-        Array of shape `[1, n_dims]` representing the point which maximises the utility function.
+        Array of shape `[1, n_dims]` representing the point which maximises the
+        acquisition function.
     """
-    utility_function_values = utility_function(query_points)
-    max_utility_function_value_idx = jnp.argmax(
-        utility_function_values, axis=0, keepdims=True
+    acquisition_function_values = acquisition_function(query_points)
+    max_acquisition_function_value_idx = jnp.argmax(
+        acquisition_function_values, axis=0, keepdims=True
     )
     best_sample_point = jnp.take_along_axis(
-        query_points, max_utility_function_value_idx, axis=0
+        query_points, max_acquisition_function_value_idx, axis=0
     )
     return best_sample_point
 
 
 @dataclass
-class AbstractSinglePointUtilityMaximizer(ABC):
-    """Abstract base class for single point utility function maximizers."""
+class AbstractSinglePointAcquisitionMaximizer(ABC):
+    """Abstract base class for single point acquisition function maximizers."""
 
     @abstractmethod
     def maximize(
         self,
-        utility_function: SinglePointUtilityFunction,
+        acquisition_function: SinglePointAcquisitionFunction,
         search_space: AbstractSearchSpace,
         key: KeyArray,
     ) -> Float[Array, "1 D"]:
-        """Maximize the given utility function over the search space provided.
+        """Maximize the given acquisition function over the search space provided.
 
         Args:
-            utility_function: utility function to be maximized.
-            search_space: search space over which to maximize the utility function.
+            acquisition_function: acquisition function to be maximized.
+            search_space: search space over which to maximize the acquisition function.
             key: JAX PRNG key.
 
         Returns:
-            Float[Array, "1 D"]: Point at which the utility function is maximized.
+            Float[Array, "1 D"]: Point at which the acquisition function is maximized.
         """
         raise NotImplementedError
 
 
 @dataclass
-class ContinuousSinglePointUtilityMaximizer(AbstractSinglePointUtilityMaximizer):
-    """The `ContinuousUtilityMaximizer` class is used to maximize utility
-    functions over the continuous domain with L-BFGS-B. First we sample the utility
+class ContinuousSinglePointAcquisitionMaximizer(
+    AbstractSinglePointAcquisitionMaximizer
+):
+    """The `ContinuousAcquisitionMaximizer` class is used to maximize acquisition
+    functions over the continuous domain with L-BFGS-B. First we sample the acquisition
     function at `num_initial_samples` points from the search space, and then we run
     L-BFGS-B from the best of these initial points. We run this process `num_restarts`
     number of times, each time sampling a different random set of
@@ -95,11 +100,11 @@ class ContinuousSinglePointUtilityMaximizer(AbstractSinglePointUtilityMaximizer)
 
     def maximize(
         self,
-        utility_function: SinglePointUtilityFunction,
+        acquisition_function: SinglePointAcquisitionFunction,
         search_space: ContinuousSearchSpace,
         key: KeyArray,
     ) -> Float[Array, "1 D"]:
-        max_observed_utility_function_value = None
+        max_observed_acquisition_function_value = None
         maximizer = None
 
         for _ in range(self.num_restarts):
@@ -108,17 +113,17 @@ class ContinuousSinglePointUtilityMaximizer(AbstractSinglePointUtilityMaximizer)
                 self.num_initial_samples, key=key
             )
             best_initial_sample_point = _get_discrete_maximizer(
-                initial_sample_points, utility_function
+                initial_sample_points, acquisition_function
             )
 
-            def _scalar_utility_function(x: Float[Array, "1 D"]) -> ScalarFloat:
+            def _scalar_acquisition_function(x: Float[Array, "1 D"]) -> ScalarFloat:
                 """
-                Returns the negative of the utility function as a scalar, since
-                utility functions should be *maximized* but scipy minimizes.
+                Returns the negative of the acquisition function as a scalar, since
+                acquisition functions should be *maximized* but scipy minimizes.
                 """
-                return -utility_function(x)[0][0]
+                return -acquisition_function(x)[0][0]
 
-            val_and_grad_fn = jax.value_and_grad(_scalar_utility_function)
+            val_and_grad_fn = jax.value_and_grad(_scalar_acquisition_function)
 
             def _objective_for_scipy(x_flat):
                 x = jnp.array(x_flat).reshape(1, -1)
@@ -140,17 +145,22 @@ class ContinuousSinglePointUtilityMaximizer(AbstractSinglePointUtilityMaximizer)
                 bounds=bounds,
             )
             optimized_point = jnp.array(result.x).reshape(1, -1)
-            optimized_utility_function_value = utility_function(optimized_point)[0][0]
-            if (max_observed_utility_function_value is None) or (
-                optimized_utility_function_value > max_observed_utility_function_value
+            optimized_acquisition_function_value = acquisition_function(
+                optimized_point
+            )[0][0]
+            if (max_observed_acquisition_function_value is None) or (
+                optimized_acquisition_function_value
+                > max_observed_acquisition_function_value
             ):
-                max_observed_utility_function_value = optimized_utility_function_value
+                max_observed_acquisition_function_value = (
+                    optimized_acquisition_function_value
+                )
                 maximizer = optimized_point
         return maximizer
 
 
-AbstractUtilityMaximizer = AbstractSinglePointUtilityMaximizer
+AbstractAcquisitionMaximizer = AbstractSinglePointAcquisitionMaximizer
 """
-Type alias for a utility maximizer. Currently we only support single point utility
-functions, but in future may support batched utility functions.
+Type alias for an acquisition maximizer. Currently we only support single point
+acquisition functions, but in future may support batched acquisition functions.
 """

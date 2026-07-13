@@ -7,13 +7,13 @@ from jaxtyping import (
     Key,
 )
 
+from decijax.acquisition_functions.base import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    SinglePointAcquisitionFunction,
+)
 from decijax.models import (
     ProbabilisticModel,
     SupportsGaussianPrediction,
-)
-from decijax.utility_functions.base import (
-    AbstractSinglePointUtilityFunctionBuilder,
-    SinglePointUtilityFunction,
 )
 from decijax.utils import (
     OBJECTIVE,
@@ -21,7 +21,7 @@ from decijax.utils import (
 )
 
 
-class ProbabilityOfImprovement(AbstractSinglePointUtilityFunctionBuilder):
+class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     r"""
     An acquisition function which returns the probability of improvement
     of the objective function over the best observed value.
@@ -49,13 +49,13 @@ class ProbabilityOfImprovement(AbstractSinglePointUtilityFunctionBuilder):
     Proceedings of the IEEE, 104(1), 148-175. doi: 10.1109/JPROC.2015.2494218
     """
 
-    def build_utility_function(
+    def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
-    ) -> SinglePointUtilityFunction:
+    ) -> SinglePointAcquisitionFunction:
         """
-        Constructs the probability of improvement utility function
+        Constructs the probability of improvement acquisition function
         using the predictive posterior of the objective function.
 
         For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
@@ -63,14 +63,15 @@ class ProbabilityOfImprovement(AbstractSinglePointUtilityFunctionBuilder):
 
         Args:
             models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-            the utility function. One model must correspond to the `OBJECTIVE` key and
-            support Gaussian prediction.
+                the acquisition function. One model must correspond to the `OBJECTIVE`
+                key and support Gaussian prediction.
             key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
-            the probability of improvement is computed deterministically from the
-            predictive posterior, the key is not used.
+                the probability of improvement is computed deterministically from the
+                predictive posterior, the key is not used.
 
         Returns:
-            SinglePointUtilityFunction: the probability of improvement utility function.
+            SinglePointAcquisitionFunction: the probability of improvement acquisition
+                function.
         """
         self.check_objective_present(models)
         objective_model = models[OBJECTIVE]

@@ -11,7 +11,7 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
-from decijax.utility_functions.thompson_sampling import ThompsonSampling
+from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
 from decijax.utils import OBJECTIVE
 from gpjax.typing import KeyArray
 
@@ -41,7 +41,7 @@ def test_invalid_rff_num_on_model_raises_error(num_rff_features: int):
 @pytest.mark.filterwarnings(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
-def test_thompson_sampling_utility_function_same_key_same_function(
+def test_thompson_sampling_acquisition_function_same_key_same_function(
     test_target_function: AbstractContinuousTestFunction,
     num_test_points: int,
     key: KeyArray,
@@ -50,15 +50,21 @@ def test_thompson_sampling_utility_function_same_key_same_function(
     posterior = generate_dummy_conjugate_posterior(dataset)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
     models = {OBJECTIVE: model}
-    ts_utility_function_one = ThompsonSampling().build_utility_function(models, key)
-    ts_utility_function_two = ThompsonSampling().build_utility_function(models, key)
+    ts_acquisition_function_one = ThompsonSampling().build_acquisition_function(
+        models, key
+    )
+    ts_acquisition_function_two = ThompsonSampling().build_acquisition_function(
+        models, key
+    )
     test_key, _ = jr.split(key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
-    ts_utility_function_one_values = ts_utility_function_one(test_X)
-    ts_utility_function_two_values = ts_utility_function_two(test_X)
-    assert isinstance(ts_utility_function_one, Callable)
-    assert isinstance(ts_utility_function_two, Callable)
-    assert (ts_utility_function_one_values == ts_utility_function_two_values).all()
+    ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)
+    ts_acquisition_function_two_values = ts_acquisition_function_two(test_X)
+    assert isinstance(ts_acquisition_function_one, Callable)
+    assert isinstance(ts_acquisition_function_two, Callable)
+    assert (
+        ts_acquisition_function_one_values == ts_acquisition_function_two_values
+    ).all()
 
 
 @pytest.mark.parametrize(
@@ -70,7 +76,7 @@ def test_thompson_sampling_utility_function_same_key_same_function(
 @pytest.mark.filterwarnings(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
-def test_thompson_sampling_utility_function_different_key_different_function(
+def test_thompson_sampling_acquisition_function_different_key_different_function(
     test_target_function: AbstractContinuousTestFunction,
     num_test_points: int,
     key: KeyArray,
@@ -81,17 +87,19 @@ def test_thompson_sampling_utility_function_different_key_different_function(
     models = {OBJECTIVE: model}
     sample_one_key = key
     sample_two_key, _ = jr.split(key)
-    ts_utility_builder = ThompsonSampling()
-    ts_utility_function_one = ts_utility_builder.build_utility_function(
+    ts_acquisition_builder = ThompsonSampling()
+    ts_acquisition_function_one = ts_acquisition_builder.build_acquisition_function(
         models, sample_one_key
     )
-    ts_utility_function_two = ts_utility_builder.build_utility_function(
+    ts_acquisition_function_two = ts_acquisition_builder.build_acquisition_function(
         models, sample_two_key
     )
     test_key, _ = jr.split(sample_two_key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
-    ts_utility_function_one_values = ts_utility_function_one(test_X)
-    ts_utility_function_two_values = ts_utility_function_two(test_X)
-    assert isinstance(ts_utility_function_one, Callable)
-    assert isinstance(ts_utility_function_two, Callable)
-    assert not (ts_utility_function_one_values == ts_utility_function_two_values).all()
+    ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)
+    ts_acquisition_function_two_values = ts_acquisition_function_two(test_X)
+    assert isinstance(ts_acquisition_function_one, Callable)
+    assert isinstance(ts_acquisition_function_two, Callable)
+    assert not (
+        ts_acquisition_function_one_values == ts_acquisition_function_two_values
+    ).all()

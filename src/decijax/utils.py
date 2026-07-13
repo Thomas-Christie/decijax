@@ -1,3 +1,5 @@
+from typing import TypeAlias
+
 import jax.numpy as jnp
 from beartype.typing import (
     Callable,
@@ -14,11 +16,11 @@ from decijax.models import SupportsGaussianPrediction
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
 """
-Tag for the objective dataset/function in standard utility functions.
+Tag for the objective dataset/function in standard acquisition functions.
 """
 
 
-FunctionEvaluator = Callable[[Float[Array, "N D"]], Dict[str, Dataset]]
+FunctionEvaluator: TypeAlias = Callable[[Float[Array, "N D"]], Dict[str, Dataset]]
 """
 Type alias for function evaluators, which take an array of points of shape $[N, D]$
 and evaluate a set of functions at each point, returning a mapping from function tags

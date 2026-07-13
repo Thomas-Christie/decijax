@@ -3,15 +3,15 @@ from beartype.typing import (
     Mapping,
     Optional,
 )
+from decijax.acquisition_functions import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    SinglePointAcquisitionFunction,
+)
 from decijax.models import (
     GPJaxConjugateGP,
     ProbabilisticModel,
 )
 from decijax.test_functions import NegativeQuadratic
-from decijax.utility_functions import (
-    AbstractSinglePointUtilityFunctionBuilder,
-    SinglePointUtilityFunction,
-)
 from gpjax.dataset import Dataset
 from gpjax.gps import (
     ConjugatePosterior,
@@ -30,20 +30,20 @@ from jaxtyping import (
 )
 
 
-class QuadraticSinglePointUtilityFunctionBuilder(
-    AbstractSinglePointUtilityFunctionBuilder
+class QuadraticSinglePointAcquisitionFunctionBuilder(
+    AbstractSinglePointAcquisitionFunctionBuilder
 ):
     """
-    Dummy utility function builder for testing purposes, which returns the value of the
-    negated quadratic test function at the input points. The utility function is
+    Dummy acquisition function builder for testing purposes, which returns the value of
+    the negated quadratic test function at the input points. The acquisition function is
     *maximised*, and the maximum is at x = 0.5.
     """
 
-    def build_utility_function(
+    def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
-    ) -> SinglePointUtilityFunction:
+    ) -> SinglePointAcquisitionFunction:
         test_function = NegativeQuadratic()
         return test_function.evaluate
 

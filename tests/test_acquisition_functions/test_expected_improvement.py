@@ -12,7 +12,7 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
-from decijax.utility_functions.expected_improvement import (
+from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
 )
 from decijax.utils import (
@@ -29,7 +29,7 @@ from tests.utils import generate_dummy_conjugate_posterior
     [NegativeForrester(), NegativeLogarithmicGoldsteinPrice()],
 )
 @pytest.mark.parametrize("key", [jr.key(42), jr.key(10)])
-def test_expected_improvement_utility_function_correct_values(
+def test_expected_improvement_acquisition_function_correct_values(
     test_target_function: AbstractContinuousTestFunction,
     key: KeyArray,
 ):
@@ -38,7 +38,7 @@ def test_expected_improvement_utility_function_correct_values(
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
     models = {OBJECTIVE: model}
-    ei_fn = ExpectedImprovement().build_utility_function(models, key)
+    ei_fn = ExpectedImprovement().build_acquisition_function(models, key)
     test_x = test_target_function.generate_test_points(100, key)
     ei = ei_fn(test_x)
     latent_dist = posterior.predict(test_x, dataset)

@@ -7,9 +7,17 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax as ox
 import pytest
+from decijax.acquisition_functions import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    ThompsonSampling,
+)
+from decijax.acquisition_maximizer import (
+    AbstractSinglePointAcquisitionMaximizer,
+    ContinuousSinglePointAcquisitionMaximizer,
+)
 from decijax.decision_maker import (
     AbstractDecisionMaker,
-    UtilityDrivenDecisionMaker,
+    AcquisitionDrivenDecisionMaker,
 )
 from decijax.models import GPJaxConjugateGPBuilder
 from decijax.search_space import (
@@ -17,14 +25,6 @@ from decijax.search_space import (
     ContinuousSearchSpace,
 )
 from decijax.test_functions import NegativeQuadratic
-from decijax.utility_functions import (
-    AbstractSinglePointUtilityFunctionBuilder,
-    ThompsonSampling,
-)
-from decijax.utility_maximizer import (
-    AbstractSinglePointUtilityMaximizer,
-    ContinuousSinglePointUtilityMaximizer,
-)
 from decijax.utils import (
     OBJECTIVE,
     build_function_evaluator,
@@ -32,7 +32,7 @@ from decijax.utils import (
 from gpjax.dataset import Dataset
 from gpjax.typing import KeyArray
 
-from tests.utils import QuadraticSinglePointUtilityFunctionBuilder
+from tests.utils import QuadraticSinglePointAcquisitionFunctionBuilder
 
 CONSTRAINT = "CONSTRAINT"
 
@@ -67,18 +67,18 @@ def model_builder() -> GPJaxConjugateGPBuilder:
 
 
 @pytest.fixture
-def utility_function_builder() -> AbstractSinglePointUtilityFunctionBuilder:
-    return QuadraticSinglePointUtilityFunctionBuilder()
+def acquisition_function_builder() -> AbstractSinglePointAcquisitionFunctionBuilder:
+    return QuadraticSinglePointAcquisitionFunctionBuilder()
 
 
 @pytest.fixture
-def thompson_sampling_utility_function_builder() -> ThompsonSampling:
+def thompson_sampling_acquisition_function_builder() -> ThompsonSampling:
     return ThompsonSampling()
 
 
 @pytest.fixture
-def utility_maximizer() -> AbstractSinglePointUtilityMaximizer:
-    return ContinuousSinglePointUtilityMaximizer(
+def acquisition_maximizer() -> AbstractSinglePointAcquisitionMaximizer:
+    return ContinuousSinglePointAcquisitionMaximizer(
         num_initial_samples=1000, num_restarts=1
     )
 
@@ -98,8 +98,8 @@ def test_abstract_decision_maker_raises_error():
 def test_invalid_batch_size_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     batch_size: int,
 ):
     key = jr.key(42)
@@ -107,12 +107,12 @@ def test_invalid_batch_size_raises_error(
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     with pytest.raises(ValueError):
-        UtilityDrivenDecisionMaker(
+        AcquisitionDrivenDecisionMaker(
             search_space=search_space,
             model_builders=model_builders,
             datasets=datasets,
-            utility_function_builder=utility_function_builder,
-            utility_maximizer=utility_maximizer,
+            acquisition_function_builder=acquisition_function_builder,
+            acquisition_maximizer=acquisition_maximizer,
             key=key,
             post_ask=[],
             post_tell=[],
@@ -123,20 +123,20 @@ def test_invalid_batch_size_raises_error(
 def test_non_thompson_sampling_non_one_batch_size_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
     with pytest.raises(NotImplementedError):
-        UtilityDrivenDecisionMaker(
+        AcquisitionDrivenDecisionMaker(
             search_space=search_space,
             model_builders=model_builders,
             datasets=datasets,
-            utility_function_builder=utility_function_builder,
-            utility_maximizer=utility_maximizer,
+            acquisition_function_builder=acquisition_function_builder,
+            acquisition_maximizer=acquisition_maximizer,
             key=key,
             post_ask=[],
             post_tell=[],
@@ -147,20 +147,20 @@ def test_non_thompson_sampling_non_one_batch_size_raises_error(
 def test_invalid_tags_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder}
     dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"CONSTRAINT": dataset}  # Dataset tag doesn't match model builder tag
     with pytest.raises(ValueError):
-        UtilityDrivenDecisionMaker(
+        AcquisitionDrivenDecisionMaker(
             search_space=search_space,
             model_builders=model_builders,
             datasets=datasets,
-            utility_function_builder=utility_function_builder,
-            utility_maximizer=utility_maximizer,
+            acquisition_function_builder=acquisition_function_builder,
+            acquisition_maximizer=acquisition_maximizer,
             key=key,
             post_ask=[],
             post_tell=[],
@@ -171,20 +171,20 @@ def test_invalid_tags_raises_error(
 def test_initialisation_optimizes_model_hyperparameters(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     constraint_dataset = get_dataset(num_points=5, key=jr.key(10))
     datasets = {"OBJECTIVE": objective_dataset, CONSTRAINT: constraint_dataset}
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=datasets,
-        utility_function_builder=utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -204,19 +204,19 @@ def test_initialisation_optimizes_model_hyperparameters(
 def test_decision_maker_ask(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=datasets,
-        utility_function_builder=utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -226,7 +226,7 @@ def test_decision_maker_ask(
     query_point = decision_maker.ask(key=key)
     assert query_point.shape == (1, 1)
     assert jnp.allclose(query_point, jnp.array([[0.5]]), atol=1e-5)
-    assert len(decision_maker.current_utility_functions) == 1
+    assert len(decision_maker.current_acquisition_functions) == 1
     assert (
         decision_maker.key == initial_decision_maker_key
     ).all()  # Ensure decision maker key is unchanged
@@ -236,20 +236,20 @@ def test_decision_maker_ask(
 def test_decision_maker_ask_multi_batch_ts(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    thompson_sampling_utility_function_builder: ThompsonSampling,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    thompson_sampling_acquisition_function_builder: ThompsonSampling,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     batch_size: int,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder}
     objective_dataset = get_dataset(num_points=5, key=jr.key(42))
     datasets = {"OBJECTIVE": objective_dataset}
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=datasets,
-        utility_function_builder=thompson_sampling_utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=thompson_sampling_acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -263,7 +263,7 @@ def test_decision_maker_ask_multi_batch_ts(
     # assert (
     #     len(jnp.unique(query_points)) == batch_size
     # )  # Ensure we aren't drawing the same Thompson sample each time
-    assert len(decision_maker.current_utility_functions) == batch_size
+    assert len(decision_maker.current_acquisition_functions) == batch_size
     assert (
         decision_maker.key == initial_decision_maker_key
     ).all()  # Ensure decision maker key is unchanged
@@ -272,8 +272,8 @@ def test_decision_maker_ask_multi_batch_ts(
 def test_decision_maker_tell_with_inconsistent_observations_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
@@ -283,12 +283,12 @@ def test_decision_maker_tell_with_inconsistent_observations_raises_error(
         OBJECTIVE: initial_objective_dataset,
         CONSTRAINT: initial_constraint_dataset,
     }
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=datasets,
-        utility_function_builder=utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -307,8 +307,8 @@ def test_decision_maker_tell_with_inconsistent_observations_raises_error(
 def test_decision_maker_tell_updates_datasets_and_models(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
     model_builders = {OBJECTIVE: model_builder, CONSTRAINT: model_builder}
@@ -318,12 +318,12 @@ def test_decision_maker_tell_updates_datasets_and_models(
         "OBJECTIVE": initial_objective_dataset,
         CONSTRAINT: initial_constraint_dataset,
     }
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=datasets,
-        utility_function_builder=utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -370,8 +370,8 @@ def test_decision_maker_tell_updates_datasets_and_models(
 def test_decision_maker_run(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    utility_function_builder: AbstractSinglePointUtilityFunctionBuilder,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     n_steps: int,
 ):
     key = jr.key(42)
@@ -380,12 +380,12 @@ def test_decision_maker_run(
     initial_datasets = {
         "OBJECTIVE": initial_objective_dataset,
     }
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=initial_datasets,
-        utility_function_builder=utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],
@@ -403,7 +403,7 @@ def test_decision_maker_run(
     assert query_datasets[OBJECTIVE].n == 5 + n_steps
     assert (
         jnp.abs(query_datasets[OBJECTIVE].X[-n_steps:] - jnp.array([[0.5]])) < 1e-5
-    ).all()  # Ensure we're querying the correct point in our dummy utility function at each step
+    ).all()  # Ensure we're querying the correct point in our dummy acquisition function at each step
     assert (
         decision_maker.key != initial_decision_maker_key
     ).all()  # Ensure decision maker key gets updated
@@ -414,8 +414,8 @@ def test_decision_maker_run(
 def test_decision_maker_run_ts(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    thompson_sampling_utility_function_builder: ThompsonSampling,
-    utility_maximizer: AbstractSinglePointUtilityMaximizer,
+    thompson_sampling_acquisition_function_builder: ThompsonSampling,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     n_steps: int,
     batch_size: int,
 ):
@@ -425,12 +425,12 @@ def test_decision_maker_run_ts(
     initial_datasets = {
         "OBJECTIVE": initial_objective_dataset,
     }
-    decision_maker = UtilityDrivenDecisionMaker(
+    decision_maker = AcquisitionDrivenDecisionMaker(
         search_space=search_space,
         model_builders=model_builders,
         datasets=initial_datasets,
-        utility_function_builder=thompson_sampling_utility_function_builder,
-        utility_maximizer=utility_maximizer,
+        acquisition_function_builder=thompson_sampling_acquisition_function_builder,
+        acquisition_maximizer=acquisition_maximizer,
         key=key,
         post_ask=[],
         post_tell=[],

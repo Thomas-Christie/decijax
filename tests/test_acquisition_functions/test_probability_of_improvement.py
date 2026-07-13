@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jax.random as jr
 from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import NegativeForrester
-from decijax.utility_functions.probability_of_improvement import (
+from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
 from decijax.utils import OBJECTIVE
@@ -23,13 +23,13 @@ def test_probability_of_improvement_gives_correct_value_for_a_seed():
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
     models = {OBJECTIVE: model}
 
-    pi_utility_builder = ProbabilityOfImprovement()
-    pi_utility = pi_utility_builder.build_utility_function(models, key)
+    pi_acquisition_builder = ProbabilityOfImprovement()
+    pi_acquisition = pi_acquisition_builder.build_acquisition_function(models, key)
 
     test_X = neg_forrester.generate_test_points(num_points=10, key=key)
-    utility_values = pi_utility(test_X)
+    acquisition_values = pi_acquisition(test_X)
 
-    # Computing the expected utility values
+    # Computing the expected acquisition values
     predictive_dist = posterior(test_X, train_data=dataset)
     predictive_mean = predictive_dist.mean
     predictive_std = predictive_dist.stddev()
@@ -41,9 +41,9 @@ def test_probability_of_improvement_gives_correct_value_for_a_seed():
 
     # 1 - Gaussian CDF computed "by hand"
     x_ = (best_y - predictive_mean) / predictive_std
-    expected_utility_values = 1 - 0.5 * (
+    expected_acquisition_values = 1 - 0.5 * (
         1 + jax.scipy.special.erf(x_ / jnp.sqrt(2))
     ).reshape(-1, 1)
 
-    assert utility_values.shape == (10, 1)
-    assert jnp.isclose(utility_values, expected_utility_values).all()
+    assert acquisition_values.shape == (10, 1)
+    assert jnp.isclose(acquisition_values, expected_acquisition_values).all()

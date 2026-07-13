@@ -1,6 +1,6 @@
 from jax import config
 
-from decijax.utility_functions.expected_improvement import (
+from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
 )
 
@@ -16,13 +16,13 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
-from decijax.utility_functions.base import (
-    AbstractSinglePointUtilityFunctionBuilder,
+from decijax.acquisition_functions.base import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
 )
-from decijax.utility_functions.probability_of_improvement import (
+from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
-from decijax.utility_functions.thompson_sampling import ThompsonSampling
+from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
 from decijax.utils import OBJECTIVE
 from tests.utils import (
     CapabilitylessModel,
@@ -34,11 +34,11 @@ from tests.utils import (
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 @pytest.mark.parametrize(
-    "utility_function_builder",
+    "acquisition_function_builder",
     [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
 )
-def test_utility_function_no_objective_model_raises_error(
-    utility_function_builder: Type[AbstractSinglePointUtilityFunctionBuilder],
+def test_acquisition_function_no_objective_model_raises_error(
+    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -46,19 +46,19 @@ def test_utility_function_no_objective_model_raises_error(
     model = generate_dummy_conjugate_model(dataset)
     models = {"CONSTRAINT": model}  # No OBJECTIVE-tagged model
     with pytest.raises(ValueError):
-        utility_function = utility_function_builder()
-        utility_function.build_utility_function(models, key)
+        acquisition_function = acquisition_function_builder()
+        acquisition_function.build_acquisition_function(models, key)
 
 
 @pytest.mark.filterwarnings(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 @pytest.mark.parametrize(
-    "utility_function_builder",
+    "acquisition_function_builder",
     [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
 )
 def test_model_without_required_capability_raises_error(
-    utility_function_builder: Type[AbstractSinglePointUtilityFunctionBuilder],
+    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -66,12 +66,12 @@ def test_model_without_required_capability_raises_error(
     model = CapabilitylessModel(dataset)  # Supports neither prediction nor sampling
     models = {OBJECTIVE: model}
     with pytest.raises(ValueError):
-        utility_function = utility_function_builder()
-        utility_function.build_utility_function(models, key)
+        acquisition_function = acquisition_function_builder()
+        acquisition_function.build_acquisition_function(models, key)
 
 
 @pytest.mark.parametrize(
-    "utility_function_builder",
+    "acquisition_function_builder",
     [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
 )
 @pytest.mark.parametrize(
@@ -83,8 +83,8 @@ def test_model_without_required_capability_raises_error(
 @pytest.mark.filterwarnings(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
-def test_utility_functions_have_correct_shapes(
-    utility_function_builder: Type[AbstractSinglePointUtilityFunctionBuilder],
+def test_acquisition_functions_have_correct_shapes(
+    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
     test_target_function: AbstractContinuousTestFunction,
     num_test_points: int,
     key: KeyArray,
@@ -92,9 +92,9 @@ def test_utility_functions_have_correct_shapes(
     dataset = test_target_function.generate_dataset(num_points=10, key=key)
     model = generate_dummy_conjugate_model(dataset)
     models = {OBJECTIVE: model}
-    utility_builder = utility_function_builder()
-    utility_function = utility_builder.build_utility_function(models, key)
+    acquisition_builder = acquisition_function_builder()
+    acquisition_function = acquisition_builder.build_acquisition_function(models, key)
     test_key, _ = jr.split(key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
-    utility_function_values = utility_function(test_X)
-    assert utility_function_values.shape == (num_test_points, 1)
+    acquisition_function_values = acquisition_function(test_X)
+    assert acquisition_function_values.shape == (num_test_points, 1)

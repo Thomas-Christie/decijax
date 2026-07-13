@@ -50,12 +50,12 @@ import matplotlib.pyplot as plt
 import optax as ox
 
 from examples.utils import use_mpl_style
-from decijax.decision_maker import UtilityDrivenDecisionMaker
+from decijax.decision_maker import AcquisitionDrivenDecisionMaker
 from decijax.posterior_handler import PosteriorHandler
 from decijax.search_space import ContinuousSearchSpace
-from decijax.utility_functions import ThompsonSampling
-from decijax.utility_maximizer import (
-    ContinuousSinglePointUtilityMaximizer,
+from decijax.acquisition_functions import ThompsonSampling
+from decijax.acquisition_maximizer import (
+    ContinuousSinglePointAcquisitionMaximizer,
 )
 from decijax.utils import (
     OBJECTIVE,
@@ -212,52 +212,52 @@ posterior_handlers = {OBJECTIVE: posterior_handler}
 # referred to as *models* in the model-based decision making literature.
 
 # %% [markdown]
-# ## The Utility Function
+# ## The Acquisition Function
 #
-# Now all that remains for us to define is the utility function, and a way of maximising
-# it. Within the utility-driven decision making framework, we define a utility function,
+# Now all that remains for us to define is the acquisition function, and a way of maximising
+# it. Within the acquisition-driven decision making framework, we define an acquisition function,
 # often using our GP surrogates, which characterises the *utility*, or *usefulness*, of
 # querying the black-box function at any point within the domain of interest. We can then
 # *maximise* this function to decide which point to query next. In this case we'll be
-# using Thompson sampling as a utility function for determining where to query next. With
+# using Thompson sampling as an acquisition function for determining where to query next. With
 # this function we simply draw a sample from the GP posterior, and choose the maximiser
 # of the sample as the point to query next. In the `decision_making` framework we create
-# `UtilityFunctionBuilder` objects. Currently, we only support
-# `SinglePointUtilityFunction`s, which are utility functions which characterise the
+# `AcquisitionFunctionBuilder` objects. Currently, we only support
+# `SinglePointAcquisitionFunction`s, which are acquisition functions which characterise the
 # utility of querying a single point. Thompson sampling is somewhat of a special case, as
 # we can draw $B$ independent samples from the GP posterior and optimise each of these
 # samples in order to obtain a *batch* of points to query next. We'll see an example of
 # this later on.
 #
-# Within the `ThompsonSampling` utility function builder class we implement the
-# `build_utility_function` method, which takes as input a dictionary containing lablled GP
+# Within the `ThompsonSampling` acquisition function builder class we implement the
+# `build_acquisition_function` method, which takes as input a dictionary containing lablled GP
 # posteriors, as well as the corresponding datasets for these posteriors, and draws an
 # approximate sample from the GP posterior which is a surrogate for the objective
-# function. We instantiate our utility function builder below, specifying the number of
+# function. We instantiate our acquisition function builder below, specifying the number of
 # Random Fourier features to use when constructing the approximate samples from the GP posterior:
 
 # %%
-utility_function_builder = ThompsonSampling(num_features=500)
+acquisition_function_builder = ThompsonSampling(num_features=500)
 
 # %% [markdown]
-# We also need a method for maximising the utility function. Since `ThompsonSampling` is
-# classed as a `SinglePointUtilityFunction`, we can use the
-# `ContinuousSinglePointUtilityMaximizer` to maximise it. This requires the user to
+# We also need a method for maximising the acquisition function. Since `ThompsonSampling` is
+# classed as a `SinglePointAcquisitionFunction`, we can use the
+# `ContinuousSinglePointAcquisitionMaximizer` to maximise it. This requires the user to
 # specify `num_initial_samples` and `num_restarts` when instantiating it. This first
-# queries the utility function at `num_initial_samples` points, and then uses the best of
+# queries the acquisition function at `num_initial_samples` points, and then uses the best of
 # these points as a starting point for L-BFGS-B, a gradient-based optimiser, to further
 # refine. This is repeated `num_restarts` times, each time sampling a different initial set
 # of `num_initial_samples` and the best point found is returned. We'll instantiate our
 # maximiser below:
 
 # %%
-acquisition_maximizer = ContinuousSinglePointUtilityMaximizer(
+acquisition_maximizer = ContinuousSinglePointAcquisitionMaximizer(
     num_initial_samples=100, num_restarts=1
 )
 
 # %% [markdown]
 #
-# It is worth noting that `ThompsonSampling` is not the only utility function we could use,
+# It is worth noting that `ThompsonSampling` is not the only acquisition function we could use,
 # since our module also provides e.g. `ProbabilityOfImprovement`, `ExpectedImprovement`,
 # which were briefly discussed in [our previous introduction to Bayesian optimisation](https://docs.jaxgaussianprocesses.com/_examples/bayesian_optimisation/).
 
@@ -266,7 +266,7 @@ acquisition_maximizer = ContinuousSinglePointUtilityMaximizer(
 # ## Putting it All Together with the Decision Maker
 #
 # We now have all the ingredients ready for our Bayesian optimisation loop, so let's put
-# all the logic together using the `UtilityDrivenDecisionMaker` class provided by the
+# all the logic together using the `AcquisitionDrivenDecisionMaker` class provided by the
 # `decision_making` module. This class has 3 core methods:
 # 1. `ask` - This method is used to decide which point(s) to query next.
 # 2. `tell` - This method is used to tell the decision maker the results from querying the
@@ -276,19 +276,19 @@ acquisition_maximizer = ContinuousSinglePointUtilityMaximizer(
 #    iterations, alternating between `ask` and `tell`.
 #
 # For many decision making problems, the logic provided in the
-# `UtilityDrivenDecisionMaker` will be sufficient, and is a convenient way of gluing the
+# `AcquisitionDrivenDecisionMaker` will be sufficient, and is a convenient way of gluing the
 # various bits of machinery involved in sequential decision making together. However, for
 # more exotic decision making loops, it is easy for the user to define their own decision
 # maker class by inheriting from the `AbstractDecisionMaker` class and defining their own
 # `ask`, `tell` and `run` methods.
 #
 # However, we do also provide the user with some additional flexibility when using the
-# `UtilityDrivenDecisionMaker` class. Often we may wish to perform certain actions after
+# `AcquisitionDrivenDecisionMaker` class. Often we may wish to perform certain actions after
 # the `ask` step and the `tell` step, such as plotting the acquisition function and the
 # point chosen to be queried for debugging purposes. We can do this by passing a list of
 # functions to be called at each of these points as the `post_ask` and `post_tell`
-# attributes of the `UtilityDrivenDecisionMaker`. Both sets of functions are called with
-# the `UtilityDrivenDecisionMaker` as an argument, and so have access to all the
+# attributes of the `AcquisitionDrivenDecisionMaker`. Both sets of functions are called with
+# the `AcquisitionDrivenDecisionMaker` as an argument, and so have access to all the
 # attributes of the decision maker. The `post_ask` functions are additionally passed the
 # most recently queried points too. We'll use this functionality to plot the acquisition
 # function and the point chosen to be queried at each step of the decision making loop:
@@ -296,14 +296,14 @@ acquisition_maximizer = ContinuousSinglePointUtilityMaximizer(
 
 # %%
 def plot_bo_iteration(
-    dm: UtilityDrivenDecisionMaker, last_queried_points: Float[Array, "B D"]
+    dm: AcquisitionDrivenDecisionMaker, last_queried_points: Float[Array, "B D"]
 ):
     posterior = dm.posteriors[OBJECTIVE]
     dataset = dm.datasets[OBJECTIVE]
     plt_x = jnp.linspace(0, 1, 1000).reshape(-1, 1)
     neg_forrester_y = neg_forrester(plt_x.squeeze(axis=-1))
-    utility_fn = dm.current_utility_functions[0]
-    sample_y = utility_fn(plt_x)
+    acquisition_fn = dm.current_acquisition_functions[0]
+    sample_y = acquisition_fn(plt_x)
 
     latent_dist = posterior.predict(plt_x, train_data=dataset)
     predictive_dist = posterior.likelihood(latent_dist)
@@ -348,7 +348,7 @@ def plot_bo_iteration(
     ax.scatter(dataset.X, dataset.y, label="Observations", color=cols[2], zorder=2)
     ax.scatter(
         last_queried_points[0],
-        utility_fn(last_queried_points[0][None, ...]),
+        acquisition_fn(last_queried_points[0][None, ...]),
         label="Posterior Sample Optimum",
         marker="*",
         color=cols[3],
@@ -363,12 +363,12 @@ def plot_bo_iteration(
 # batch size of 1:
 
 # %%
-dm = UtilityDrivenDecisionMaker(
+dm = AcquisitionDrivenDecisionMaker(
     search_space=search_space,
     posterior_handlers=posterior_handlers,
     datasets=initial_datasets,
-    utility_function_builder=utility_function_builder,
-    utility_maximizer=acquisition_maximizer,
+    acquisition_function_builder=acquisition_function_builder,
+    acquisition_maximizer=acquisition_maximizer,
     batch_size=1,
     key=key,
     post_ask=[plot_bo_iteration],

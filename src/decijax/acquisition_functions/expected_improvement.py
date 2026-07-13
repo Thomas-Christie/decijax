@@ -7,13 +7,13 @@ from jaxtyping import (
     Key,
 )
 
+from decijax.acquisition_functions.base import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    SinglePointAcquisitionFunction,
+)
 from decijax.models import (
     ProbabilisticModel,
     SupportsGaussianPrediction,
-)
-from decijax.utility_functions.base import (
-    AbstractSinglePointUtilityFunctionBuilder,
-    SinglePointUtilityFunction,
 )
 from decijax.utils import (
     OBJECTIVE,
@@ -21,7 +21,7 @@ from decijax.utils import (
 )
 
 
-class ExpectedImprovement(AbstractSinglePointUtilityFunctionBuilder):
+class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     """
     Expected Improvement acquisition function as introduced by [Močkus,
     1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55). The "best"
@@ -29,11 +29,11 @@ class ExpectedImprovement(AbstractSinglePointUtilityFunctionBuilder):
     previously observed points. This enables the acquisition function to be utilised with noisy observations.
     """
 
-    def build_utility_function(
+    def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
-    ) -> SinglePointUtilityFunction:
+    ) -> SinglePointAcquisitionFunction:
         r"""
         Build the Expected Improvement acquisition function. This computes the expected
         improvement over the "best" of the previously observed points, utilising the
@@ -50,15 +50,17 @@ class ExpectedImprovement(AbstractSinglePointUtilityFunctionBuilder):
 
         Args:
             models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-            the utility function. One model must correspond to the `OBJECTIVE` key and
-            support Gaussian prediction, as we use the objective posterior to form the
-            utility function.
+                the acquisition function. One model must correspond to the `OBJECTIVE`
+                key and support Gaussian prediction, as we use the objective posterior
+                to form the acquisition function.
             key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
-            the expected improvement is computed deterministically, the key is not used.
+                the expected improvement is computed deterministically, the key is not
+                used.
 
         Returns:
-            SinglePointUtilityFunction: The Expected Improvement acquisition function to
-            to be *maximised* in order to decide which point to query next.
+            SinglePointAcquisitionFunction: The Expected Improvement acquisition
+                function to to be *maximised* in order to decide which point to query
+                next.
         """
         self.check_objective_present(models)
         objective_model = models[OBJECTIVE]

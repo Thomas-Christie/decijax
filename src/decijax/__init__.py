@@ -1,6 +1,6 @@
 from decijax.decision_maker import (
     AbstractDecisionMaker,
-    UtilityDrivenDecisionMaker,
+    AcquisitionDrivenDecisionMaker,
 )
 from decijax.models import (
     AbstractModelBuilder,
@@ -20,45 +20,45 @@ from decijax.test_functions import (
     NegativeLogarithmicGoldsteinPrice,
     NegativeQuadratic,
 )
-from decijax.utility_functions import (
-    AbstractSinglePointUtilityFunctionBuilder,
-    AbstractUtilityFunctionBuilder,
+from decijax.acquisition_functions import (
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractAcquisitionFunctionBuilder,
     ExpectedImprovement,
     ProbabilityOfImprovement,
-    SinglePointUtilityFunction,
+    SinglePointAcquisitionFunction,
     ThompsonSampling,
-    UtilityFunction,
+    AcquisitionFunction,
 )
-from decijax.utility_maximizer import (
-    AbstractSinglePointUtilityMaximizer,
-    AbstractUtilityMaximizer,
-    ContinuousSinglePointUtilityMaximizer,
+from decijax.acquisition_maximizer import (
+    AbstractSinglePointAcquisitionMaximizer,
+    AbstractAcquisitionMaximizer,
+    ContinuousSinglePointAcquisitionMaximizer,
 )
 from decijax.utils import build_function_evaluator
 
 __all__ = [
-    "AbstractUtilityFunctionBuilder",
-    "AbstractUtilityMaximizer",
+    "AbstractAcquisitionFunctionBuilder",
+    "AbstractAcquisitionMaximizer",
     "AbstractDecisionMaker",
     "AbstractModelBuilder",
     "AbstractSearchSpace",
-    "AbstractSinglePointUtilityFunctionBuilder",
-    "AbstractSinglePointUtilityMaximizer",
-    "UtilityFunction",
+    "AbstractSinglePointAcquisitionFunctionBuilder",
+    "AbstractSinglePointAcquisitionMaximizer",
+    "AcquisitionFunction",
     "build_function_evaluator",
-    "ContinuousSinglePointUtilityMaximizer",
+    "ContinuousSinglePointAcquisitionMaximizer",
     "ContinuousSearchSpace",
     "ExpectedImprovement",
     "GPJaxConjugateGP",
     "GPJaxConjugateGPBuilder",
-    "UtilityDrivenDecisionMaker",
+    "AcquisitionDrivenDecisionMaker",
     "AbstractContinuousTestFunction",
     "NegativeForrester",
     "NegativeLogarithmicGoldsteinPrice",
     "NegativeQuadratic",
     "ProbabilisticModel",
     "ProbabilityOfImprovement",
-    "SinglePointUtilityFunction",
+    "SinglePointAcquisitionFunction",
     "SupportsGaussianPrediction",
     "SupportsSamplePaths",
     "ThompsonSampling",

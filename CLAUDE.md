@@ -33,7 +33,7 @@ abstractions:
      Nothing outside `models/` (and the generic `Dataset` container) should
      import from `gpjax`.
 
-2. **Utility (acquisition) functions** (`decijax/utility_functions/`) —
+2. **Acquisition functions** (`decijax/acquisition_functions/`) —
    builders take `Mapping[str, ProbabilisticModel]` plus a PRNG key and return
    a closure `[N, D] -> [N, 1]` to be *maximised*. Models carry their own
    training data, so builders take no separate `datasets` argument.
@@ -67,7 +67,7 @@ abstractions:
   model, not to the acquisition.
 - Acquisition closures must be pure JAX functions of `x` (jit/grad-safe);
   anything constant (e.g. the incumbent) is computed once in
-  `build_utility_function`, not inside the closure.
+  `build_acquisition_function`, not inside the closure.
 
 ## Design principles
 
