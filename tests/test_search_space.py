@@ -1,17 +1,16 @@
-from beartype.roar import BeartypeCallHintParamViolation
-from jax import config
 import jax.numpy as jnp
 import jax.random as jr
+import pytest
+from beartype.roar import BeartypeCallHintParamViolation
+from decijax.search_space import (
+    AbstractSearchSpace,
+    ContinuousSearchSpace,
+)
+from jax import config
 from jaxtyping import (
     Array,
     Float,
     TypeCheckError,
-)
-import pytest
-
-from decijax.search_space import (
-    AbstractSearchSpace,
-    ContinuousSearchSpace,
 )
 
 config.update("jax_enable_x64", True)

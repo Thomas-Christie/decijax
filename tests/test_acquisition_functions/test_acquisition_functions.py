@@ -1,21 +1,13 @@
-from jax import config
-
 from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
 )
+from jax import config
 
 config.update("jax_enable_x64", True)
 
-from beartype.typing import Type
-from gpjax.typing import KeyArray
 import jax.random as jr
 import pytest
-
-from decijax.test_functions.continuous_functions import (
-    AbstractContinuousTestFunction,
-    NegativeForrester,
-    NegativeLogarithmicGoldsteinPrice,
-)
+from beartype.typing import Type
 from decijax.acquisition_functions.base import (
     AbstractSinglePointAcquisitionFunctionBuilder,
 )
@@ -23,7 +15,14 @@ from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
 from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
+from decijax.test_functions.continuous_functions import (
+    AbstractContinuousTestFunction,
+    NegativeForrester,
+    NegativeLogarithmicGoldsteinPrice,
+)
 from decijax.utils import OBJECTIVE
+from gpjax.typing import KeyArray
+
 from tests.utils import (
     CapabilitylessModel,
     generate_dummy_conjugate_model,

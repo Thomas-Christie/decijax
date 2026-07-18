@@ -5,11 +5,11 @@ config.update("jax_enable_x64", True)
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from decijax.models import GPJaxConjugateGP
-from decijax.test_functions.continuous_functions import NegativeForrester
 from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
+from decijax.models import GPJaxConjugateGP
+from decijax.test_functions.continuous_functions import NegativeForrester
 from decijax.utils import OBJECTIVE
 
 from tests.utils import generate_dummy_conjugate_posterior

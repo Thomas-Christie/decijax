@@ -1,7 +1,6 @@
-from jax import config
 import pytest
-
 from decijax.acquisition_functions.base import AbstractAcquisitionFunctionBuilder
+from jax import config
 
 config.update("jax_enable_x64", True)
 

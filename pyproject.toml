@@ -39,6 +39,12 @@ docs = [
   "mkdocs>=1.6.1",
   "mkdocs-material>=9.5.0",
   "mkdocstrings[python]>=0.26.0",
+  "mkdocs-gen-files>=0.5.0,<0.6.0",
+  "jupytext>=1.19.3",
+  "nbconvert>=7.16.0",
+  "ipykernel>=6.29.0",
+  "matplotlib>=3.11.0",
+  "watermark>=2.6.0",
 ]
 dev = [
   "ruff>=0.6",
@@ -84,7 +90,7 @@ xfail_strict = true
 [tool.ruff] # https://github.com/charliermarsh/ruff
 fix = true
 cache-dir = "~/.cache/ruff"
-exclude = ["docs/", "examples/"]
+exclude = ["docs/"]
 line-length = 88
 src = ["src/decijax", "tests"]
 target-version = "py311"
@@ -93,6 +99,8 @@ target-version = "py311"
 dummy-variable-rgx = "^_$"
 select = [
   "F",
+  # isort
+  "I",
   # pycodestyle
   "E",
   "W",

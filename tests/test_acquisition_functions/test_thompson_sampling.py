@@ -5,13 +5,13 @@ config.update("jax_enable_x64", True)
 import jax.random as jr
 import pytest
 from beartype.typing import Callable
+from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
 from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
-from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
 from decijax.utils import OBJECTIVE
 from gpjax.typing import KeyArray
 

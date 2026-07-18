@@ -2,12 +2,11 @@ from jax import config
 
 config.update("jax_enable_x64", True)
 
-from gpjax.typing import KeyArray
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-
 from decijax.test_functions import PoissonTestFunction
+from gpjax.typing import KeyArray
 
 
 @pytest.mark.parametrize("test_function", [PoissonTestFunction()])

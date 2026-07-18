@@ -1,16 +1,16 @@
 from abc import abstractmethod
 from dataclasses import field
 
+import jax.numpy as jnp
+import numpyro.distributions as dist
 from gpjax.dataset import Dataset
 from gpjax.gps import AbstractMeanFunction
 from gpjax.typing import KeyArray
-import jax.numpy as jnp
 from jaxtyping import (
     Array,
     Float,
     Num,
 )
-import numpyro.distributions as dist
 
 from decijax.search_space import ContinuousSearchSpace
 

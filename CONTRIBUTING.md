@@ -54,3 +54,55 @@ We use `jupytext` to manage Jupyter notebooks, storing them as `.py` files for b
   ```
 
 Note that you can prepend `uv run` to these commands if you have `jupytext` installed in your `uv`-managed virtual environment.
+
+## Building Documentation Locally
+
+If you made changes that affect the documentation, build the docs locally to
+verify them before opening a pull request.
+
+### Previewing the docs
+
+To start a live-reloading development server at http://127.0.0.1:8000:
+
+```
+uv run mkdocs serve
+```
+
+To reproduce exactly what CI runs (a strict build that executes every example
+notebook and fails on any broken link or output):
+
+```
+DECIJAX_DOCS_EXECUTE=1 DECIJAX_DOCS_STRICT=1 uv run mkdocs build --strict
+```
+
+Executing the notebooks can be slow, and `mkdocs serve` re-runs them on every
+reload. While you're iterating on non-notebook content, you can skip execution
+by setting `DECIJAX_DOCS_EXECUTE=0`, which transcribes the notebook source
+without running it:
+
+```
+DECIJAX_DOCS_EXECUTE=0 uv run mkdocs serve
+```
+
+### Adding a new example notebook
+
+Example notebooks live in the `examples/` directory as `jupytext` "percent"
+`.py` files (see [Notebooks](#notebooks) above for converting to and from
+`.ipynb`). At docs-build time, `docs/scripts/convert_examples.py` (wired in via
+the `gen-files` plugin in `mkdocs.yml`) runs each example, renders it to
+Markdown, and writes it into the virtual `_examples/` tree — there is no
+checked-in Markdown to keep in sync.
+
+To add a new example:
+
+1. Place the `.py` notebook in `examples/`.
+2. Add a link to the rendered page under the appropriate section of `nav` in
+   `mkdocs.yml`, pointing at `_examples/<notebook-name>.md`. For instance, the
+   intro example is listed as:
+   ```yaml
+   nav:
+     - 💡 Background:
+         - Intro to Bayesian Optimisation: _examples/intro_to_bo.md
+   ```
+3. Preview with `uv run mkdocs serve` to confirm it executes and renders as
+   expected.

@@ -2,18 +2,17 @@ from jax import config
 
 config.update("jax_enable_x64", True)
 
-from gpjax.typing import KeyArray
 import jax.numpy as jnp
 import jax.random as jr
-import pytest
 import numpyro.distributions as dist
-
+import pytest
 from decijax.test_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
     NegativeQuadratic,
 )
+from gpjax.typing import KeyArray
 
 
 def test_abstract_continuous_test_function():

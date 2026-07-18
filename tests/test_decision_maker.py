@@ -5,7 +5,6 @@ config.update("jax_enable_x64", True)
 import gpjax as gpx
 import jax.numpy as jnp
 import jax.random as jr
-import optax as ox
 import pytest
 from decijax.acquisition_functions import (
     AbstractSinglePointAcquisitionFunctionBuilder,
@@ -61,8 +60,7 @@ def model_builder() -> GPJaxConjugateGPBuilder:
         prior=prior,
         likelihood_builder=likelihood_builder,
         optimization_objective=gpx.objectives.conjugate_mll,
-        optimizer=ox.adam(learning_rate=0.01),
-        num_optimization_iters=100,
+        max_num_optimization_iters=100,
     )
 
 

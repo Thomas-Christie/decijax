@@ -1,8 +1,8 @@
 from decijax.acquisition_functions.base import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
     AbstractAcquisitionFunctionBuilder,
-    SinglePointAcquisitionFunction,
+    AbstractSinglePointAcquisitionFunctionBuilder,
     AcquisitionFunction,
+    SinglePointAcquisitionFunction,
 )
 from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,

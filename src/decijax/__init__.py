@@ -1,3 +1,17 @@
+from decijax.acquisition_functions import (
+    AbstractAcquisitionFunctionBuilder,
+    AbstractSinglePointAcquisitionFunctionBuilder,
+    AcquisitionFunction,
+    ExpectedImprovement,
+    ProbabilityOfImprovement,
+    SinglePointAcquisitionFunction,
+    ThompsonSampling,
+)
+from decijax.acquisition_maximizer import (
+    AbstractAcquisitionMaximizer,
+    AbstractSinglePointAcquisitionMaximizer,
+    ContinuousSinglePointAcquisitionMaximizer,
+)
 from decijax.decision_maker import (
     AbstractDecisionMaker,
     AcquisitionDrivenDecisionMaker,
@@ -19,20 +33,6 @@ from decijax.test_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
     NegativeQuadratic,
-)
-from decijax.acquisition_functions import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
-    AbstractAcquisitionFunctionBuilder,
-    ExpectedImprovement,
-    ProbabilityOfImprovement,
-    SinglePointAcquisitionFunction,
-    ThompsonSampling,
-    AcquisitionFunction,
-)
-from decijax.acquisition_maximizer import (
-    AbstractSinglePointAcquisitionMaximizer,
-    AbstractAcquisitionMaximizer,
-    ContinuousSinglePointAcquisitionMaximizer,
 )
 from decijax.utils import build_function_evaluator
 

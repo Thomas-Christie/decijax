@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - main
-            - docs
     workflow_dispatch:
 
 permissions:
@@ -31,6 +30,11 @@ jobs:
             - name: Install uv
               uses: astral-sh/setup-uv@v8.2.0
             - name: Build the documentation with MkDocs
+              env:
+                  DECIJAX_DOCS_EXECUTE: "1"
+                  DECIJAX_DOCS_STRICT: "1"
+                  # Silence the third-party MkDocs 2.0 / properdocs advert.
+                  DISABLE_MKDOCS_2_WARNING: "true"
               run: |
                   uv sync --frozen --group docs
                   uv run mkdocs build

@@ -28,6 +28,9 @@ theme:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+        - docs/scripts/convert_examples.py
   - mkdocstrings:
       handlers:
         python:
@@ -36,7 +39,9 @@ plugins:
             show_source: false
 
 nav:
-  - Home: index.md
+  - 🏡 Home: index.md
+  - 💡 Background:
+      - Intro to Bayesian Optimisation: _examples/intro_to_bo.md
 
 markdown_extensions:
   - admonition

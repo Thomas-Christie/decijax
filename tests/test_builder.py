@@ -4,7 +4,6 @@ config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
 import jax.random as jr
-import optax as ox
 import pytest
 from decijax.models import (
     GPJaxConjugateGP,
@@ -26,7 +25,7 @@ def gaussian_likelihood_builder(num_datapoints: int) -> Gaussian:
     return Gaussian(num_datapoints=num_datapoints)
 
 
-def _make_builder(num_optimization_iters=10, **kwargs) -> GPJaxConjugateGPBuilder:
+def _make_builder(max_num_optimization_iters=10, **kwargs) -> GPJaxConjugateGPBuilder:
     mean_function = Constant(constant=Real(value=jnp.array([1.0])))
     kernel = Matern52(lengthscale=jnp.array([0.5]), variance=jnp.array(1.0), n_dims=1)
     prior = Prior(mean_function=mean_function, kernel=kernel)
@@ -34,18 +33,17 @@ def _make_builder(num_optimization_iters=10, **kwargs) -> GPJaxConjugateGPBuilde
         prior=prior,
         likelihood_builder=gaussian_likelihood_builder,
         optimization_objective=conjugate_mll,
-        optimizer=ox.adam(learning_rate=0.01),
-        num_optimization_iters=num_optimization_iters,
+        max_num_optimization_iters=max_num_optimization_iters,
         **kwargs,
     )
 
 
-@pytest.mark.parametrize("num_optimization_iters", [0, -1, -10])
+@pytest.mark.parametrize("max_num_optimization_iters", [0, -1, -10])
 def test_builder_erroneous_num_optimization_iterations_raises_error(
-    num_optimization_iters: int,
+    max_num_optimization_iters: int,
 ):
     with pytest.raises(ValueError):
-        _make_builder(num_optimization_iters=num_optimization_iters)
+        _make_builder(max_num_optimization_iters=max_num_optimization_iters)
 
 
 @pytest.mark.parametrize("num_datapoints", [5, 50])
