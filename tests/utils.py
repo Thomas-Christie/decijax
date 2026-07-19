@@ -33,10 +33,10 @@ from jaxtyping import (
 class QuadraticSinglePointAcquisitionFunctionBuilder(
     AbstractSinglePointAcquisitionFunctionBuilder
 ):
-    """
-    Dummy acquisition function builder for testing purposes, which returns the value of
-    the negated quadratic test function at the input points. The acquisition function is
-    *maximised*, and the maximum is at x = 0.5.
+    """Dummy acquisition function builder for testing purposes.
+
+    Returns the value of the negated quadratic test function at the input points.
+    The acquisition function is *maximised*, and the maximum is at x = 0.5.
     """
 
     def build_acquisition_function(
@@ -49,8 +49,11 @@ class QuadraticSinglePointAcquisitionFunctionBuilder(
 
 
 class CapabilitylessModel(ProbabilisticModel):
-    """A model implementing no predictive capability, used to test that acquisitions
-    reject models which lack the capability they require."""
+    """A model implementing no predictive capability.
+
+    Used to test that acquisitions reject models which lack the capability they
+    require.
+    """
 
     def __init__(self, dataset: Dataset):
         self._dataset = dataset

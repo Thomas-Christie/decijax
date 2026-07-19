@@ -1,3 +1,5 @@
+"""Gaussian process models."""
+
 from dataclasses import dataclass
 
 import jax.numpy as jnp
@@ -41,6 +43,12 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
     num_features: int = 100
 
     def __post_init__(self):
+        """Validate that the posterior is conjugate and `num_features` is positive.
+
+        Raises:
+            ValueError: If `posterior` is not a `ConjugatePosterior`, or if
+                `num_features` is not a positive integer.
+        """
         if not isinstance(self.posterior, ConjugatePosterior):
             raise ValueError(
                 "GPJaxConjugateGP requires a ConjugatePosterior (i.e. a Gaussian "
@@ -54,10 +62,12 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
 
     @property
     def training_inputs(self) -> Float[Array, "N D"]:
+        """Inputs the model was conditioned on."""
         return self.dataset.X
 
     @property
     def observations(self) -> Float[Array, "N 1"]:
+        """Observed targets, in prediction space."""
         return self.dataset.y
 
     def predict(self, x: Float[Array, "N D"]) -> GaussianDistribution:

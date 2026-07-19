@@ -1,3 +1,5 @@
+"""Probability of Improvement acquisition functions."""
+
 import jax.numpy as jnp
 from beartype.typing import Mapping
 from jax.scipy.stats import norm
@@ -22,12 +24,10 @@ from decijax.utils import (
 
 
 class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
-    r"""
-    An acquisition function which returns the probability of improvement
-    of the objective function over the best observed value.
+    r"""Standard Probability of Improvement acquisition function.
 
-    More precisely, given a predictive posterior distribution of the objective
-    function $`f`$, the probability of improvement at a test point $`x`$ is defined as:
+    Given a predictive posterior distribution of the objective function $`f`$, the
+    probability of improvement at a test point $`x`$ is defined as:
     $$`\text{PI}(x) = \text{Prob}[f(x) > f(x_{\text{best}})]`$$
     where $`x_{\text{best}}`$ is the maximiser of the posterior mean
     at previously observed values (to handle noisy observations).
@@ -38,7 +38,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     where $`\mu`$ and $`\sigma`$ are the mean and standard deviation of the
     predictive distribution of the objective function at $`x`$.
 
-    References
+    References:
     ----------
     [1] Kushner, H. J. (1964).
     A new method of locating the maximum point of an arbitrary multipeak curve in the presence of noise.
@@ -54,9 +54,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
     ) -> SinglePointAcquisitionFunction:
-        """
-        Constructs the probability of improvement acquisition function
-        using the predictive posterior of the objective function.
+        """Build the Probability of Imprvoement acquisition function.
 
         For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
         probability of improvement is computed per sample and averaged.

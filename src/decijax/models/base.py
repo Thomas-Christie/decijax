@@ -1,3 +1,5 @@
+"""Root model abstract base class and predictive capability mix-ins."""
+
 from abc import (
     ABC,
     abstractmethod,

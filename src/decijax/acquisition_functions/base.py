@@ -1,3 +1,5 @@
+"""Abstract base classes and type aliases for acquisition functions."""
+
 from abc import (
     ABC,
     abstractmethod,
@@ -38,16 +40,16 @@ which point, or batch of points, to query next.
 
 
 class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
-    """
-    Abstract class for building acquisition functions which don't support batches. As such, they characterise the utility of querying a single point next.
+    """Abstract class for building acquisition functions which don't support batches.
+
+    These acquisition functions characterise the utility of querying a single point next.
     """
 
     def check_objective_present(
         self,
         models: Mapping[str, ProbabilisticModel],
     ) -> None:
-        """
-        Check that the objective model is present in the models.
+        """Check that the objective model is present in the models.
 
         Args:
             models: dictionary of models to be used to form the acquisition function.
@@ -64,8 +66,7 @@ class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
     ) -> SinglePointAcquisitionFunction:
-        """
-        Build a `AcquisitionFunction` from a set of models.
+        """Build an `AcquisitionFunction` from a set of models.
 
         Args:
             models: dictionary of models to be used to form the acquisition function.

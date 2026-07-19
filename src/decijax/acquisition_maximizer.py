@@ -1,3 +1,5 @@
+"""Functionality for maximizing acquisition functions."""
+
 from abc import (
     ABC,
     abstractmethod,
@@ -68,7 +70,7 @@ class AbstractSinglePointAcquisitionMaximizer(ABC):
             key: JAX PRNG key.
 
         Returns:
-            Float[Array, "1 D"]: Point at which the acquisition function is maximized.
+            Point at which the acquisition function is maximized.
         """
         raise NotImplementedError
 
@@ -77,18 +79,23 @@ class AbstractSinglePointAcquisitionMaximizer(ABC):
 class ContinuousSinglePointAcquisitionMaximizer(
     AbstractSinglePointAcquisitionMaximizer
 ):
-    """The `ContinuousAcquisitionMaximizer` class is used to maximize acquisition
-    functions over the continuous domain with L-BFGS-B. First we sample the acquisition
-    function at `num_initial_samples` points from the search space, and then we run
-    L-BFGS-B from the best of these initial points. We run this process `num_restarts`
-    number of times, each time sampling a different random set of
-    `num_initial_samples`initial points.
+    """Maximize acquisition functions over the continuous domain with L-BFGS-B.
+
+    First we sample the acquisition function at `num_initial_samples` points from the
+    search space, and then we run L-BFGS-B from the best of these initial points. We
+    run this process `num_restarts` number of times, each time sampling a different
+    random set of `num_initial_samples`initial points.
     """
 
     num_initial_samples: int
     num_restarts: int
 
     def __post_init__(self):
+        """Validate that `num_initial_samples` and `num_restarts` are positive.
+
+        Raises:
+            ValueError: If `num_initial_samples` or `num_restarts` is less than 1.
+        """
         if self.num_initial_samples < 1:
             raise ValueError(
                 f"num_initial_samples must be greater than 0, got {self.num_initial_samples}."
@@ -104,6 +111,20 @@ class ContinuousSinglePointAcquisitionMaximizer(
         search_space: ContinuousSearchSpace,
         key: KeyArray,
     ) -> Float[Array, "1 D"]:
+        """Maximize the acquisition function with multi-start L-BFGS-B.
+
+        For each of `num_restarts` restarts, samples `num_initial_samples` points
+        from the search space, seeds L-BFGS-B from the best of them, and returns
+        the maximizer found across all restarts.
+
+        Args:
+            acquisition_function: acquisition function to be maximized.
+            search_space: continuous search space to maximize over.
+            key: JAX PRNG key.
+
+        Returns:
+            Point at which the acquisition function is maximized.
+        """
         max_observed_acquisition_function_value = None
         maximizer = None
 
@@ -117,9 +138,10 @@ class ContinuousSinglePointAcquisitionMaximizer(
             )
 
             def _scalar_acquisition_function(x: Float[Array, "1 D"]) -> ScalarFloat:
-                """
-                Returns the negative of the acquisition function as a scalar, since
-                acquisition functions should be *maximized* but scipy minimizes.
+                """Returns the negative of the acquisition function as a scalar.
+
+                This is because acquisition functions should be *maximized* but scipy
+                *minimizes*.
                 """
                 return -acquisition_function(x)[0][0]
 

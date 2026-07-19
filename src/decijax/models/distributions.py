@@ -1,3 +1,5 @@
+"""A collection of distributions."""
+
 from abc import (
     ABC,
     abstractmethod,
@@ -12,8 +14,7 @@ from jaxtyping import (
 
 
 class AbstractGaussianDistribution(ABC):
-    r"""Minimal Gaussian predictive interface consumed by analytic acquisition
-    functions (EI, PI, UCB).
+    r"""Minimal Gaussian predictive interface.
 
     Every quantity carries a leading *sample* axis ``S`` so that one interface
     spans:
@@ -59,10 +60,12 @@ class GaussianDistribution(AbstractGaussianDistribution):
 
     @property
     def mean(self) -> Float[Array, "S N"]:
+        """Marginal predictive mean at each query point, per sample."""
         return self._mean
 
     @property
     def variance(self) -> Float[Array, "S N"]:
+        """Marginal predictive variance at each query point, per sample."""
         return self._variance
 
 

@@ -1,4 +1,5 @@
-from abc import abstractmethod
+"""Non-conjugate test functions."""
+
 from dataclasses import dataclass
 
 import jax.numpy as jnp
@@ -16,9 +17,9 @@ from decijax.search_space import ContinuousSearchSpace
 
 @dataclass
 class PoissonTestFunction:
-    """
-    Test function for GPs utilising the Poisson likelihood. Function taken from
-    https://docs.jaxgaussianprocesses.com/_examples/poisson/#dataset.
+    """Test function for GPs utilising the Poisson likelihood.
+
+    Function taken from https://docs.jaxgaussianprocesses.com/_examples/poisson/#dataset.
 
     Attributes:
         search_space (ContinuousSearchSpace): Search space for the function.
@@ -30,8 +31,7 @@ class PoissonTestFunction:
     )
 
     def generate_dataset(self, num_points: int, key: KeyArray) -> Dataset:
-        """
-        Generate a toy dataset from the test function.
+        """Generate a toy dataset from the test function.
 
         Args:
             num_points (int): Number of points to sample.
@@ -47,8 +47,7 @@ class PoissonTestFunction:
     def generate_test_points(
         self, num_points: int, key: KeyArray
     ) -> Float[Array, "N D"]:
-        """
-        Generate test points from the search space of the test function.
+        """Generate test points from the search space of the test function.
 
         Args:
             num_points (int): Number of points to sample.
@@ -59,11 +58,10 @@ class PoissonTestFunction:
         """
         return self.search_space.sample(num_points=num_points, key=key)
 
-    @abstractmethod
     def evaluate(self, x: Float[Array, "N 1"]) -> Int[Array, "N 1"]:
-        """
-        Evaluate the test function at a set of points. Function taken from
-        https://docs.jaxgaussianprocesses.com/_examples/poisson/#dataset.
+        """Evaluate the test function at a set of points.
+
+        Function taken from https://docs.jaxgaussianprocesses.com/_examples/poisson/#dataset.
 
         Args:
             x (Float[Array, 'N D']): Points to evaluate the test function at.

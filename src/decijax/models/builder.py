@@ -1,3 +1,5 @@
+"""Model builders."""
+
 from abc import (
     ABC,
     abstractmethod,
@@ -101,6 +103,11 @@ class GPJaxConjugateGPBuilder(AbstractModelBuilder):
     observation_transform: ObservationTransform = standardize_observations
 
     def __post_init__(self):
+        """Validate the builder configuration.
+
+        Raises:
+            ValueError: If `max_num_optimization_iters` is less than 1.
+        """
         if self.max_num_optimization_iters < 1:
             raise ValueError("max_num_optimization_iters must be greater than 0.")
 

@@ -1,3 +1,5 @@
+"""Thompson sampling acquisition function."""
+
 from beartype.typing import Mapping
 from jaxtyping import (
     Array,
@@ -16,9 +18,9 @@ from decijax.utils import OBJECTIVE
 
 
 class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
-    """
-    Form an acquisition function by drawing an approximate sample from the posterior,
-    using decoupled sampling as introduced in [Wilson et. al.
+    """Form an acquisition function by drawing an approximate sample from the posterior.
+
+    This uses decoupled sampling as introduced in [Wilson et. al.
     (2020)](https://arxiv.org/abs/2002.09309). The sample is returned directly as the
     acquisition function, which is then *maximised* to find the next query point.
 
@@ -34,9 +36,10 @@ class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
     ) -> SinglePointAcquisitionFunction:
-        """
-        Draw an approximate sample path from the posterior of the objective model and
-        return it as an acquisition function to be *maximised*.
+        """Build the Thompson sampling acquisition function.
+
+        Draws an approximate sample path from the posterior of the objective model and
+        returns it as an acquisition function to be *maximised*.
 
         Args:
             models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form

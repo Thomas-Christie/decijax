@@ -1,3 +1,5 @@
+"""Decision makers driving the ask-tell optimisation loop."""
+
 import copy
 from abc import (
     ABC,
@@ -35,9 +37,8 @@ from decijax.utils import FunctionEvaluator
 
 @dataclass
 class AbstractDecisionMaker(ABC):
-    """
-    AbstractDecisionMaker abstract base class which handles the core decision making
-    loop, where we sequentially decide on points to query our function of interest at.
+    """Abstract base class to handle the core decision making loop.
+
     The decision making loop is split into two key steps, `ask` and `tell`. The `ask`
     step is typically used to decide which point to query next. The `tell` step is
     typically used to update models and datasets with newly queried points. These steps
@@ -78,10 +79,15 @@ class AbstractDecisionMaker(ABC):
     ]  # Specific type is List[Callable[[AbstractDecisionMaker], None]] but causes Beartype issues
 
     def __post_init__(self):
-        """
-        At initialisation we check that the model builders and datasets are
-        consistent (i.e. have the same tags), and then build the models, fitting them
-        using the corresponding datasets.
+        """Checks for batch size validity, model/dataset consistency, and builds models.
+
+        At initialisation we check that the model builders and datasets are consistent
+        (i.e. have the same tags), and then build the models, fitting them using the
+        corresponding datasets.
+
+        Raises:
+            ValueError: If `batch_size` is less than 1, or if `model_builders` and
+                `datasets` do not have the same tags (keys).
         """
         self.datasets = copy.copy(
             self.datasets
@@ -107,8 +113,7 @@ class AbstractDecisionMaker(ABC):
 
     @abstractmethod
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
-        """
-        Get the point(s) to be queried next.
+        """Get the point(s) to be queried next.
 
         Args:
             key (KeyArray): JAX PRNG key for controlling random state.
@@ -119,8 +124,7 @@ class AbstractDecisionMaker(ABC):
         raise NotImplementedError
 
     def tell(self, observation_datasets: Mapping[str, Dataset], key: KeyArray):
-        """
-        Add newly observed data to datasets and refit the corresponding models.
+        """Add newly observed data to datasets and refit the corresponding models.
 
         Args:
             observation_datasets: dictionary of datasets containing new observations.
@@ -145,9 +149,9 @@ class AbstractDecisionMaker(ABC):
     def run(
         self, n_steps: int, black_box_function_evaluator: FunctionEvaluator
     ) -> Mapping[str, Dataset]:
-        """
-        Run the decision making loop continuously for for `n_steps`. This is broken down
-        into three main steps:
+        """Run the decision making loop continuously for for `n_steps`.
+
+        This is broken down into three main steps:
         1. Call the `ask` method to get the point to be queried next.
         2. Call the `black_box_function_evaluator` to evaluate the black box functions
         of interest at the point chosen to be queried.
@@ -187,13 +191,12 @@ class AbstractDecisionMaker(ABC):
 
 @dataclass
 class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
-    """
-    AcquisitionDrivenDecisionMaker class which handles the core decision making loop in
-    a typical model-based decision making setup. In this setup we use surrogate model(s)
-    for the function(s) of interest, and define an acquisition function which
-    characterises how useful it would be to query a given point within the search space
-    given the data we have observed so far. This can then be used to decide which
-    point(s) to query next.
+    """Class which handles the core decision making loop in a model-based setup.
+
+    In this setup we use surrogate model(s) for the function(s) of interest, and define
+    an acquisition function which characterises how useful it would be to query a given
+    point within the search space given the data we have observed so far. This can then
+    be used to decide which point(s) to query next.
 
     The decision making loop is split into two key steps, `ask` and `tell`. The `ask`
     step forms a `AcquisitionFunction` from the current `posteriors` and `datasets` and
@@ -219,6 +222,12 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
     acquisition_maximizer: AbstractAcquisitionMaximizer
 
     def __post_init__(self):
+        """Initialise the base class and validate batch size compatibility.
+
+        Raises:
+            NotImplementedError: If `batch_size` is greater than 1 with an
+                acquisition function builder other than `ThompsonSampling`.
+        """
         super().__post_init__()
         if self.batch_size > 1 and not isinstance(
             self.acquisition_function_builder, ThompsonSampling
@@ -228,9 +237,9 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
             )
 
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
-        """
-        Get updated acquisition function(s) and return the point(s) which maximises it/
-        them. This method also stores the acquisition function(s) in
+        """Form acquisition function(s) and return the point(s) which maximise them.
+
+        This method also stores the acquisition function(s) in
         `self.current_acquisition_functions` so that they can be accessed after the ask
         function has been called. This is useful for non-deterministic acquisition
         functions, which may differ between calls to `ask` due to the splitting of

@@ -1,3 +1,5 @@
+"""A collection of utility functions."""
+
 from typing import TypeAlias
 
 import jax.numpy as jnp
@@ -32,10 +34,10 @@ https://github.com/secondmind-labs/trieste/blob/develop/trieste/observer.py
 def build_function_evaluator(
     functions: Dict[str, Callable[[Float[Array, "N D"]], Float[Array, "N 1"]]],
 ) -> FunctionEvaluator:
-    """
-    Takes a dictionary of functions and returns a `FunctionEvaluator` which can be
-    used to evaluate each of the functions at a supplied set of points and return a
-    dictionary of datasets storing the evaluated points.
+    """Takes a dictionary of functions and returns a `FunctionEvaluator`.
+
+    The `FunctionEvaluator` evaluates each of the functions at a supplied set
+    of points and returns a dictionary of datasets storing the evaluated points.
     """
     return lambda x: {tag: Dataset(x, f(x)) for tag, f in functions.items()}
 
@@ -43,10 +45,11 @@ def build_function_evaluator(
 def get_best_latent_observation_val(
     model: SupportsGaussianPrediction,
 ) -> Float[Array, "S 1"]:
-    """
-    Returns the best (latent) incumbent value for each posterior sample, defined as
-    the maximum of the predictive mean evaluated at the model's observed inputs. In
-    the noiseless case this corresponds to the maximum observed value.
+    """Returns the best (latent) incumbent value per sample.
+
+    This is defined as the maximum of the predictive mean evaluated at the model's
+    observed inputs. In the noiseless case this corresponds to the maximum observed
+    value.
 
     The leading sample axis ``S`` is preserved (``S == 1`` for point-estimate
     models, ``S`` = number of hyperparameter samples for fully Bayesian models), so

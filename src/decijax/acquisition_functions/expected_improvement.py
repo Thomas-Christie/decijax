@@ -1,3 +1,5 @@
+"""Expected improvement acquisition functions."""
+
 import jax.numpy as jnp
 from beartype.typing import Mapping
 from jax.scipy.stats import norm
@@ -22,11 +24,11 @@ from decijax.utils import (
 
 
 class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
-    """
-    Expected Improvement acquisition function as introduced by [Močkus,
-    1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55). The "best"
-    incumbent value is defined as the highest posterior mean value evaluated at the
-    previously observed points. This enables the acquisition function to be utilised with noisy observations.
+    """Standard Expected Improvement acquisition function.
+
+    As introduced by [Močkus, 1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55). The "best" incumbent value is defined as the highest posterior
+    mean value evaluated at the previously observed points. This enables the
+    acquisition function to be utilised with noisy observations.
     """
 
     def build_acquisition_function(
@@ -34,12 +36,11 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         models: Mapping[str, ProbabilisticModel],
         key: Key[Array, ""],
     ) -> SinglePointAcquisitionFunction:
-        r"""
-        Build the Expected Improvement acquisition function. This computes the expected
-        improvement over the "best" of the previously observed points, utilising the
-        posterior distribution of the surrogate model. For posterior distribution
-        $`f(\cdot)`$, and best incumbent value $`\eta`$, this is defined
-        as:
+        r"""Build the Expected Improvement acquisition function.
+
+        This computes the expected improvement over the "best" of the previously
+        observed points, utilising the posterior distribution of the surrogate model.
+        For posterior distribution $`f(\cdot)`$, and best incumbent value $`\eta`$, this is defined as:
         ```math
         \alpha_{\text{EI}}(\mathbf{x}) = \mathbb{E}\left[\max(0, f(\mathbf{x}) - \eta)\right]
         ```
