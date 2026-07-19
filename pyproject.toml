@@ -40,6 +40,7 @@ docs = [
   "mkdocs-material>=9.5.0",
   "mkdocstrings[python]>=0.26.0",
   "mkdocs-gen-files>=0.5.0,<0.6.0",
+  "mkdocs-literate-nav>=0.6.1",
   "jupytext>=1.19.3",
   "nbconvert>=7.16.0",
   "ipykernel>=6.29.0",

@@ -84,6 +84,23 @@ without running it:
 DECIJAX_DOCS_EXECUTE=0 uv run mkdocs serve
 ```
 
+### API reference
+
+The `📕 Reference` section is generated automatically from the package source
+by `docs/scripts/gen_api.py` (wired in via the `gen-files` plugin in
+`mkdocs.yml`). It walks `src/decijax/`, emits a `mkdocstrings` page per module,
+and builds the navigation via the `literate-nav` plugin — there is no
+checked-in API Markdown to keep in sync. A new module therefore appears in the
+reference automatically; you do not need to touch `mkdocs.yml`.
+
+Docstrings are rendered with `mkdocstrings` using the
+[Google style](https://mkdocstrings.github.io/griffe/reference/docstrings/#google-style)
+(`Args:` / `Returns:` / `Raises:` sections, with continuation lines indented
+under their entry). Because CI builds with `--strict`, a malformed docstring —
+e.g. an unindented continuation line, or a cross-reference that fails to
+resolve — fails the build. Run the strict build above before opening a pull
+request to catch these locally.
+
 ### Adding a new example notebook
 
 Example notebooks live in the `examples/` directory as `jupytext` "percent"

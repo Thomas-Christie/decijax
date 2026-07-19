@@ -1,3 +1,5 @@
+"""Synthetic functions for tests and demonstrations."""
+
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,

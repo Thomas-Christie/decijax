@@ -39,7 +39,7 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
             num_points (int): Number of points to sample.
             key (KeyArray): JAX PRNG key.
             obs_stddev (float): (Optional) standard deviation of Gaussian distributed
-            noise added to observations.
+                noise added to observations.
 
         Returns:
             Dataset: Dataset of points sampled from the test function.

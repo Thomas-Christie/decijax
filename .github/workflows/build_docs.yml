@@ -37,7 +37,7 @@ jobs:
                   DISABLE_MKDOCS_2_WARNING: "true"
               run: |
                   uv sync --frozen --group docs
-                  uv run mkdocs build
+                  uv run mkdocs build --strict
             - name: Upload pages artifact
               uses: actions/upload-pages-artifact@v5
               with:

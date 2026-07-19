@@ -1,3 +1,5 @@
+"""Surrogate models and their builders."""
+
 from decijax.models.base import (
     ProbabilisticModel,
     SamplePath,

@@ -1,3 +1,5 @@
+"""Acquisition functions."""
+
 from decijax.acquisition_functions.base import (
     AbstractAcquisitionFunctionBuilder,
     AbstractSinglePointAcquisitionFunctionBuilder,
