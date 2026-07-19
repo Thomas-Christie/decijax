@@ -5,6 +5,7 @@ from abc import (
     abstractmethod,
 )
 from dataclasses import dataclass
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -25,7 +26,7 @@ class AbstractSearchSpace(ABC):
     """
 
     @abstractmethod
-    def sample(self, num_points: int, key: KeyArray):
+    def sample(self, num_points: int, key: KeyArray) -> Any:
         """Sample points from the search space.
 
         Args:
