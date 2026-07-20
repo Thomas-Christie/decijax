@@ -34,18 +34,19 @@ def test_expected_improvement_acquisition_function_correct_values(
     key: KeyArray,
 ):
     # Test validity of computed values with Monte-Carlo
-    dataset = test_target_function.generate_dataset(num_points=10, key=key)
+    data_key, acq_key, test_key, mc_key = jr.split(key, 4)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
     models = {OBJECTIVE: model}
-    ei_fn = ExpectedImprovement().build_acquisition_function(models, key)
-    test_x = test_target_function.generate_test_points(100, key)
+    ei_fn = ExpectedImprovement().build_acquisition_function(models, acq_key)
+    test_x = test_target_function.generate_test_points(100, test_key)
     ei = ei_fn(test_x)
     latent_dist = posterior.predict(test_x, dataset)
     latent_mean = latent_dist.mean
     latent_var = latent_dist.variance
     samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
-        key, sample_shape=(10000,)
+        mc_key, sample_shape=(10000,)
     )
     eta = get_best_latent_observation_val(model)
     mc_ei = jnp.expand_dims(jnp.mean(jnp.maximum(samples - eta, 0), 0), -1)

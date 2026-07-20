@@ -5,28 +5,46 @@ config.update("jax_enable_x64", True)
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+import numpyro.distributions as dist
+import pytest
 from decijax.acquisition_functions.probability_of_improvement import (
+    LogProbabilityOfImprovement,
     ProbabilityOfImprovement,
 )
 from decijax.models import GPJaxConjugateGP
-from decijax.test_functions.continuous_functions import NegativeForrester
-from decijax.utils import OBJECTIVE
+from decijax.test_functions.continuous_functions import (
+    AbstractContinuousTestFunction,
+    NegativeForrester,
+    NegativeLogarithmicGoldsteinPrice,
+)
+from decijax.utils import (
+    OBJECTIVE,
+    get_best_latent_observation_val,
+)
+from gpjax.typing import KeyArray
 
 from tests.utils import generate_dummy_conjugate_posterior
 
 
-def test_probability_of_improvement_gives_correct_value_for_a_seed():
-    key = jr.key(42)
-    neg_forrester = NegativeForrester()
-    dataset = neg_forrester.generate_dataset(num_points=10, key=key)
-    posterior = generate_dummy_conjugate_posterior(dataset, neg_forrester)
+@pytest.mark.parametrize(
+    "test_target_function",
+    [NegativeForrester(), NegativeLogarithmicGoldsteinPrice()],
+)
+@pytest.mark.parametrize("key", [jr.key(42), jr.key(10)])
+def test_probability_of_improvement_gives_correct_value_against_erf(
+    test_target_function: AbstractContinuousTestFunction,
+    key: KeyArray,
+):
+    data_key, acq_key, test_key = jr.split(key, 3)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
+    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
     models = {OBJECTIVE: model}
 
     pi_acquisition_builder = ProbabilityOfImprovement()
-    pi_acquisition = pi_acquisition_builder.build_acquisition_function(models, key)
+    pi_acquisition = pi_acquisition_builder.build_acquisition_function(models, acq_key)
 
-    test_X = neg_forrester.generate_test_points(num_points=10, key=key)
+    test_X = test_target_function.generate_test_points(num_points=100, key=test_key)
     acquisition_values = pi_acquisition(test_X)
 
     # Computing the expected acquisition values
@@ -45,5 +63,71 @@ def test_probability_of_improvement_gives_correct_value_for_a_seed():
         1 + jax.scipy.special.erf(x_ / jnp.sqrt(2))
     ).reshape(-1, 1)
 
-    assert acquisition_values.shape == (10, 1)
+    assert acquisition_values.shape == (100, 1)
     assert jnp.isclose(acquisition_values, expected_acquisition_values).all()
+
+
+@pytest.mark.parametrize(
+    "test_target_function",
+    [NegativeForrester(), NegativeLogarithmicGoldsteinPrice()],
+)
+@pytest.mark.parametrize("key", [jr.key(42), jr.key(10)])
+def test_probability_of_improvement_acquisition_function_correct_values(
+    test_target_function: AbstractContinuousTestFunction,
+    key: KeyArray,
+):
+    # Test validity of computed values with Monte-Carlo.
+    data_key, acq_key, test_key, mc_key = jr.split(key, 4)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
+    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    models = {OBJECTIVE: model}
+    pi_fn = ProbabilityOfImprovement().build_acquisition_function(models, acq_key)
+    test_x = test_target_function.generate_test_points(100, test_key)
+    pi = pi_fn(test_x)
+    latent_dist = posterior.predict(test_x, dataset)
+    latent_mean = latent_dist.mean
+    latent_var = latent_dist.variance
+    samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
+        mc_key, sample_shape=(10000,)
+    )
+    eta = get_best_latent_observation_val(model)
+    mc_pi = jnp.expand_dims(jnp.mean(samples > eta, 0), -1)
+    assert jnp.all(pi >= 0)
+    assert jnp.all(pi <= 1)
+    assert jnp.allclose(pi, mc_pi, rtol=0.03, atol=1e-3)
+
+
+@pytest.mark.parametrize(
+    "test_target_function",
+    [NegativeForrester(), NegativeLogarithmicGoldsteinPrice()],
+)
+@pytest.mark.parametrize("key", [jr.key(42), jr.key(10)])
+def test_log_probability_of_improvement_acquisition_function_correct_values(
+    test_target_function: AbstractContinuousTestFunction,
+    key: KeyArray,
+):
+    # LogPI must be the log of the (marginalised) PI: exp(LogPI) should recover
+    # both the analytic PI and its Monte-Carlo estimate.
+    data_key, pi_acq_key, log_pi_acq_key, test_key, mc_key = jr.split(key, 5)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
+    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
+    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    models = {OBJECTIVE: model}
+    pi_fn = ProbabilityOfImprovement().build_acquisition_function(models, pi_acq_key)
+    log_pi_fn = LogProbabilityOfImprovement().build_acquisition_function(
+        models, log_pi_acq_key
+    )
+    test_x = test_target_function.generate_test_points(100, test_key)
+    pi = pi_fn(test_x)
+    log_pi = log_pi_fn(test_x)
+    latent_dist = posterior.predict(test_x, dataset)
+    latent_mean = latent_dist.mean
+    latent_var = latent_dist.variance
+    samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
+        mc_key, sample_shape=(10000,)
+    )
+    eta = get_best_latent_observation_val(model)
+    mc_pi = jnp.expand_dims(jnp.mean(samples > eta, 0), -1)
+    assert jnp.allclose(jnp.exp(log_pi), pi, rtol=1e-6, atol=1e-6)
+    assert jnp.allclose(jnp.exp(log_pi), mc_pi, rtol=0.03, atol=1e-6)
