@@ -4,19 +4,19 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from collections.abc import Callable
 from typing import TypeAlias
 
-from beartype.typing import Callable
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.models.distributions import (
     AbstractGaussianDistribution,
     AbstractMultivariateGaussianDistribution,
 )
+from decijax.typing import KeyArray
 
 SamplePath: TypeAlias = Callable[[Float[Array, "N D"]], Float[Array, "N S"]]
 """A drawn posterior sample *path*: a callable mapping query points ``[N, D]`` to
@@ -64,7 +64,7 @@ class SupportsSamplePaths(ProbabilisticModel):
     """
 
     @abstractmethod
-    def draw_sample_paths(self, num_samples: int, key: Key[Array, ""]) -> SamplePath:
+    def draw_sample_paths(self, num_samples: int, key: KeyArray) -> SamplePath:
         """Draw ``num_samples`` differentiable posterior sample *paths*.
 
         Returns a single callable mapping ``[N, D] -> [N, num_samples]`` (e.g. via
@@ -98,7 +98,7 @@ class SupportsPosteriorSamples(ProbabilisticModel):
 
     @abstractmethod
     def draw_samples(
-        self, num_samples: int, key: Key[Array, ""], x: Float[Array, "N D"]
+        self, num_samples: int, key: KeyArray, x: Float[Array, "N D"]
     ) -> Float[Array, "S N num_samples"]:
         """Draw ``num_samples`` jointly-correlated samples at the query points.
 

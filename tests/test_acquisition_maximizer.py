@@ -1,7 +1,3 @@
-from jax import config
-
-config.update("jax_enable_x64", True)
-
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -16,7 +12,7 @@ from decijax.test_functions.continuous_functions import (
     NegativeLogarithmicGoldsteinPrice,
     NegativeQuadratic,
 )
-from gpjax.typing import KeyArray
+from decijax.typing import KeyArray
 
 
 def test_abstract_single_batch_acquisition_maximizer():

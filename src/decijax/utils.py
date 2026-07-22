@@ -1,18 +1,11 @@
 """A collection of utility functions."""
 
-from typing import TypeAlias
+from collections.abc import Callable
+from typing import Final, TypeAlias
 
 import jax.numpy as jnp
-from beartype.typing import (
-    Callable,
-    Dict,
-    Final,
-)
 from gpjax.dataset import Dataset
-from gpjax.typing import (
-    Array,
-    Float,
-)
+from jaxtyping import Array, Float
 
 from decijax.models import SupportsGaussianPrediction
 
@@ -22,7 +15,7 @@ Tag for the objective dataset/function in standard acquisition functions.
 """
 
 
-FunctionEvaluator: TypeAlias = Callable[[Float[Array, "N D"]], Dict[str, Dataset]]
+FunctionEvaluator: TypeAlias = Callable[[Float[Array, "N D"]], dict[str, Dataset]]
 """
 Type alias for function evaluators, which take an array of points of shape $[N, D]$
 and evaluate a set of functions at each point, returning a mapping from function tags
@@ -32,7 +25,7 @@ https://github.com/secondmind-labs/trieste/blob/develop/trieste/observer.py
 
 
 def build_function_evaluator(
-    functions: Dict[str, Callable[[Float[Array, "N D"]], Float[Array, "N 1"]]],
+    functions: dict[str, Callable[[Float[Array, "N D"]], Float[Array, "N 1"]]],
 ) -> FunctionEvaluator:
     """Takes a dictionary of functions and returns a `FunctionEvaluator`.
 

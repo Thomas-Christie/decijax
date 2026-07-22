@@ -1,15 +1,10 @@
-from decijax.acquisition_functions.expected_improvement import (
-    ExpectedImprovement,
-)
-from jax import config
-
-config.update("jax_enable_x64", True)
-
 import jax.random as jr
 import pytest
-from beartype.typing import Type
 from decijax.acquisition_functions.base import (
     AbstractSinglePointAcquisitionFunctionBuilder,
+)
+from decijax.acquisition_functions.expected_improvement import (
+    ExpectedImprovement,
 )
 from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
@@ -20,8 +15,8 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
+from decijax.typing import KeyArray
 from decijax.utils import OBJECTIVE
-from gpjax.typing import KeyArray
 
 from tests.utils import (
     CapabilitylessModel,
@@ -37,7 +32,7 @@ from tests.utils import (
     [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
 )
 def test_acquisition_function_no_objective_model_raises_error(
-    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -57,7 +52,7 @@ def test_acquisition_function_no_objective_model_raises_error(
     [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
 )
 def test_model_without_required_capability_raises_error(
-    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -83,7 +78,7 @@ def test_model_without_required_capability_raises_error(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 def test_acquisition_functions_have_correct_shapes(
-    acquisition_function_builder: Type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
     test_target_function: AbstractContinuousTestFunction,
     num_test_points: int,
     key: KeyArray,

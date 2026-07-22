@@ -49,8 +49,7 @@ from decijax.models.builder import GPJaxConjugateGPBuilder
 from decijax.models.gps import GPJaxConjugateGP
 from decijax.search_space import ContinuousSearchSpace
 from decijax.utils import OBJECTIVE
-from gpjax.typing import Array, ScalarFloat
-from jaxtyping import Float
+from jaxtyping import Array, Float
 from matplotlib import cm
 
 key = jr.key(44)
@@ -584,7 +583,7 @@ for i in range(num_experiments):
 # %%
 def obtain_regret_statistics(
     experiment_results: List[gpx.Dataset],
-    global_maximum: ScalarFloat,
+    global_maximum: float,
 ) -> Tuple[Float[Array, "N 1"], Float[Array, "N 1"]]:
     regret_results = []
     for exp_result in experiment_results:

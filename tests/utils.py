@@ -1,8 +1,7 @@
+from collections.abc import Mapping
+from typing import Optional
+
 import jax.numpy as jnp
-from beartype.typing import (
-    Mapping,
-    Optional,
-)
 from decijax.acquisition_functions import (
     AbstractSinglePointAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
@@ -12,6 +11,7 @@ from decijax.models import (
     ProbabilisticModel,
 )
 from decijax.test_functions import NegativeQuadratic
+from decijax.typing import KeyArray
 from gpjax.dataset import Dataset
 from gpjax.gps import (
     ConjugatePosterior,
@@ -26,7 +26,6 @@ from gpjax.mean_functions import (
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 
@@ -42,7 +41,7 @@ class QuadraticSinglePointAcquisitionFunctionBuilder(
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         test_function = NegativeQuadratic()
         return test_function.evaluate

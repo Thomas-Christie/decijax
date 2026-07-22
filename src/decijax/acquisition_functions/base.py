@@ -4,19 +4,16 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from collections.abc import Callable, Mapping
 from typing import TypeAlias
 
-from beartype.typing import (
-    Callable,
-    Mapping,
-)
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.models import ProbabilisticModel
+from decijax.typing import KeyArray
 from decijax.utils import OBJECTIVE
 
 SinglePointAcquisitionFunction: TypeAlias = Callable[
@@ -64,7 +61,7 @@ class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build an `AcquisitionFunction` from a set of models.
 

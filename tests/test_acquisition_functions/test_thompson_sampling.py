@@ -1,10 +1,7 @@
-from jax import config
-
-config.update("jax_enable_x64", True)
+from collections.abc import Callable
 
 import jax.random as jr
 import pytest
-from beartype.typing import Callable
 from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
 from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
@@ -12,8 +9,8 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
+from decijax.typing import KeyArray
 from decijax.utils import OBJECTIVE
-from gpjax.typing import KeyArray
 
 from tests.utils import generate_dummy_conjugate_posterior
 

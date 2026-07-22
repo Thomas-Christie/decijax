@@ -1,14 +1,14 @@
 """Probability of Improvement acquisition functions."""
 
+from collections.abc import Mapping
+
 import jax.numpy as jnp
-from beartype.typing import Mapping
 from jax.nn import logmeanexp
 from jax.scipy.special import log_ndtr
 from jax.scipy.stats import norm
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.acquisition_functions.base import (
@@ -19,6 +19,7 @@ from decijax.models import (
     ProbabilisticModel,
     SupportsGaussianPrediction,
 )
+from decijax.typing import KeyArray
 from decijax.utils import (
     OBJECTIVE,
     get_best_latent_observation_val,
@@ -58,7 +59,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Probability of Imprvoement acquisition function.
 
@@ -69,7 +70,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
             models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
                 the acquisition function. One model must correspond to the `OBJECTIVE`
                 key and support Gaussian prediction.
-            key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
+            key (KeyArray): JAX PRNG key used for random number generation. Since
                 the probability of improvement is computed deterministically from the
                 predictive posterior, the key is not used.
 
@@ -130,7 +131,7 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Log Probability of Improvement acquisition function.
 
@@ -141,7 +142,7 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
             models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
                 the acquisition function. One model must correspond to the `OBJECTIVE`
                 key and support Gaussian prediction.
-            key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
+            key (KeyArray): JAX PRNG key used for random number generation. Since
                 the log probability of improvement is computed deterministically from
                 the predictive posterior, the key is not used.
 

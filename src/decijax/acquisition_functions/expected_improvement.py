@@ -1,12 +1,12 @@
 """Expected improvement acquisition functions."""
 
+from collections.abc import Mapping
+
 import jax.numpy as jnp
-from beartype.typing import Mapping
 from jax.scipy.stats import norm
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.acquisition_functions.base import (
@@ -17,6 +17,7 @@ from decijax.models import (
     ProbabilisticModel,
     SupportsGaussianPrediction,
 )
+from decijax.typing import KeyArray
 from decijax.utils import (
     OBJECTIVE,
     get_best_latent_observation_val,
@@ -34,7 +35,7 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         r"""Build the Expected Improvement acquisition function.
 
@@ -54,7 +55,7 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
                 the acquisition function. One model must correspond to the `OBJECTIVE`
                 key and support Gaussian prediction, as we use the objective posterior
                 to form the acquisition function.
-            key (Key[Array, ""]): JAX PRNG key used for random number generation. Since
+            key (KeyArray): JAX PRNG key used for random number generation. Since
                 the expected improvement is computed deterministically, the key is not
                 used.
 

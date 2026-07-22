@@ -1,10 +1,6 @@
 """Thompson sampling acquisition function."""
 
-from beartype.typing import Mapping
-from jaxtyping import (
-    Array,
-    Key,
-)
+from collections.abc import Mapping
 
 from decijax.acquisition_functions.base import (
     AbstractSinglePointAcquisitionFunctionBuilder,
@@ -14,6 +10,7 @@ from decijax.models import (
     ProbabilisticModel,
     SupportsSamplePaths,
 )
+from decijax.typing import KeyArray
 from decijax.utils import OBJECTIVE
 
 
@@ -34,7 +31,7 @@ class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
     def build_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
-        key: Key[Array, ""],
+        key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Thompson sampling acquisition function.
 
@@ -46,7 +43,7 @@ class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
                 the acquisition function. One model must correspond to the `OBJECTIVE`
                 key and support differentiable sample paths, as we sample from the
                 objective posterior to form the acquisition function.
-            key (Key[Array, ""]): JAX PRNG key used for random number generation. This
+            key (KeyArray): JAX PRNG key used for random number generation. This
                 can be changed to draw different samples.
 
         Returns:

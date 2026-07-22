@@ -10,12 +10,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as onp
-from gpjax.typing import (
-    Array,
-    Float,
-    KeyArray,
-    ScalarFloat,
-)
+from jaxtyping import Array, Float
 from scipy.optimize import minimize
 
 from decijax.acquisition_functions import SinglePointAcquisitionFunction
@@ -23,6 +18,7 @@ from decijax.search_space import (
     AbstractSearchSpace,
     ContinuousSearchSpace,
 )
+from decijax.typing import KeyArray
 
 
 def _get_discrete_maximizer(
@@ -137,7 +133,9 @@ class ContinuousSinglePointAcquisitionMaximizer(
                 initial_sample_points, acquisition_function
             )
 
-            def _scalar_acquisition_function(x: Float[Array, "1 D"]) -> ScalarFloat:
+            def _scalar_acquisition_function(
+                x: Float[Array, "1 D"],
+            ) -> Float[Array, ""]:
                 """Returns the negative of the acquisition function as a scalar.
 
                 This is because acquisition functions should be *maximized* but scipy

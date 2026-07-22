@@ -1,7 +1,3 @@
-from jax import config
-
-config.update("jax_enable_x64", True)
-
 import jax.numpy as jnp
 import jax.random as jr
 import numpyro.distributions as dist
@@ -15,11 +11,11 @@ from decijax.test_functions.continuous_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
+from decijax.typing import KeyArray
 from decijax.utils import (
     OBJECTIVE,
     get_best_latent_observation_val,
 )
-from gpjax.typing import KeyArray
 
 from tests.utils import generate_dummy_conjugate_posterior
 

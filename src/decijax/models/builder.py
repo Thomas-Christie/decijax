@@ -4,6 +4,7 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from collections.abc import Callable
 from dataclasses import (
     dataclass,
     field,
@@ -13,7 +14,6 @@ from typing import TypeAlias
 import gpjax as gpx
 import jax.numpy as jnp
 import paramax
-from beartype.typing import Callable
 from gpjax.dataset import Dataset
 from gpjax.gps import (
     AbstractLikelihood,
@@ -23,11 +23,11 @@ from gpjax.objectives import Objective
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.models.base import ProbabilisticModel
 from decijax.models.gps import GPJaxConjugateGP
+from decijax.typing import KeyArray
 
 LikelihoodBuilder: TypeAlias = Callable[[int], AbstractLikelihood]
 """Takes the number of datapoints and returns an initialised likelihood. Needed
@@ -67,7 +67,7 @@ class AbstractModelBuilder(ABC):
     """
 
     @abstractmethod
-    def build(self, dataset: Dataset, key: Key[Array, ""]) -> ProbabilisticModel:
+    def build(self, dataset: Dataset, key: KeyArray) -> ProbabilisticModel:
         """Fit a fresh model to ``dataset`` and return it."""
         raise NotImplementedError
 
@@ -111,7 +111,7 @@ class GPJaxConjugateGPBuilder(AbstractModelBuilder):
         if self.max_num_optimization_iters < 1:
             raise ValueError("max_num_optimization_iters must be greater than 0.")
 
-    def build(self, dataset: Dataset, key: Key[Array, ""]) -> GPJaxConjugateGP:
+    def build(self, dataset: Dataset, key: KeyArray) -> GPJaxConjugateGP:
         """Fit a fresh conjugate GP to `dataset` and return it.
 
         Args:

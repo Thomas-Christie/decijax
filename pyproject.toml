@@ -23,7 +23,6 @@ classifiers = [
 ]
 dependencies = [
   "gpjax>=0.11.0",
-  "beartype>0.16.1",
   "jax>=0.7.2",
   "jaxlib>=0.7.2",
   "optax>0.2.1",
@@ -46,9 +45,11 @@ docs = [
   "ipykernel>=6.29.0",
   "matplotlib>=3.11.0",
   "watermark>=2.6.0",
+  "beartype>0.16.1",
 ]
 dev = [
   "ruff>=0.6",
+  "beartype>0.16.1",
   "pre-commit>=3.2.2",
   "pytest>=7.2.2",
   "pytest-cov>=4.0.0",
@@ -87,6 +88,8 @@ filterwarnings = [
 ]
 testpaths = ["tests"]
 xfail_strict = true
+# Enforce jaxtyping shape/dtype annotations across `decijax` during tests.
+addopts = "--jaxtyping-packages=decijax,beartype.beartype"
 
 [tool.ruff] # https://github.com/charliermarsh/ruff
 fix = true

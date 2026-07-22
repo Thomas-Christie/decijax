@@ -5,22 +5,13 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 import jax.numpy as jnp
 import jax.random as jr
-from beartype.typing import (
-    Callable,
-    Dict,
-    List,
-    Mapping,
-)
 from gpjax.dataset import Dataset
-from gpjax.typing import (
-    Array,
-    Float,
-    KeyArray,
-)
+from jaxtyping import Array, Float
 
 from decijax.acquisition_functions import (
     AbstractAcquisitionFunctionBuilder,
@@ -32,6 +23,7 @@ from decijax.models import (
     ProbabilisticModel,
 )
 from decijax.search_space import AbstractSearchSpace
+from decijax.typing import KeyArray
 from decijax.utils import FunctionEvaluator
 
 
@@ -67,16 +59,16 @@ class AbstractDecisionMaker(ABC):
     """
 
     search_space: AbstractSearchSpace
-    model_builders: Dict[str, AbstractModelBuilder]
-    datasets: Dict[str, Dataset]
+    model_builders: dict[str, AbstractModelBuilder]
+    datasets: dict[str, Dataset]
     key: KeyArray
     batch_size: int
-    post_ask: List[
+    post_ask: list[
         Callable
-    ]  # Specific type is List[Callable[[AbstractDecisionMaker, Float[Array, ["B D"]]], None]] but causes Beartype issues
-    post_tell: List[
+    ]  # Specific type is list[Callable[[AbstractDecisionMaker, Float[Array, ["B D"]]], None]] but causes Beartype issues
+    post_tell: list[
         Callable
-    ]  # Specific type is List[Callable[[AbstractDecisionMaker], None]] but causes Beartype issues
+    ]  # Specific type is list[Callable[[AbstractDecisionMaker], None]] but causes Beartype issues
 
     def __post_init__(self):
         """Checks for batch size validity, model/dataset consistency, and builds models.
@@ -107,7 +99,7 @@ class AbstractDecisionMaker(ABC):
             )
 
         # Build models
-        self.models: Dict[str, ProbabilisticModel] = {}
+        self.models: dict[str, ProbabilisticModel] = {}
         for tag, model_builder in self.model_builders.items():
             self.models[tag] = model_builder.build(self.datasets[tag], self.key)
 

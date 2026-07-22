@@ -8,7 +8,6 @@ from gpjax.gps import ConjugatePosterior
 from jaxtyping import (
     Array,
     Float,
-    Key,
 )
 
 from decijax.models.base import (
@@ -17,6 +16,7 @@ from decijax.models.base import (
     SupportsSamplePaths,
 )
 from decijax.models.distributions import GaussianDistribution
+from decijax.typing import KeyArray
 
 
 @dataclass
@@ -86,7 +86,7 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
         variance = jnp.atleast_2d(latent.variance)
         return GaussianDistribution(mean, variance)
 
-    def draw_sample_paths(self, num_samples: int, key: Key[Array, ""]) -> SamplePath:
+    def draw_sample_paths(self, num_samples: int, key: KeyArray) -> SamplePath:
         """Draw differentiable posterior sample paths via decoupled sampling.
 
         Args:

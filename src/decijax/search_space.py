@@ -9,12 +9,10 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from gpjax.typing import (
-    Array,
-    KeyArray,
-)
-from jaxtyping import Float
+from jaxtyping import Array, Float
 from scipy.stats.qmc import Sobol
+
+from decijax.typing import KeyArray
 
 
 @dataclass

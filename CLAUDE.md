@@ -7,8 +7,22 @@ default GP surrogates, but the core is deliberately backend-agnostic.
 ## Commands
 
 - Run tests: `uv run pytest tests`
-- Tests enable float64 via `jax.config.update("jax_enable_x64", True)` at the
-  top of each test module, before other imports.
+- float64 is enabled once in `tests/conftest.py`, not per test module. conftest
+  is loaded before any test module is imported, so the flag is always set in
+  time.
+- Tests run under the jaxtyping import hook with beartype, via `addopts` in
+  `pyproject.toml`. `Float[Array, ...]` shape/dtype annotations are therefore
+  *enforced* in tests, but not for library users (who typically install no
+  hook). Two consequences:
+  - A constructor given a wrong-typed argument raises
+    `BeartypeCallHintParamViolation` or `TypeCheckError` *before* any
+    hand-written `__post_init__` `ValueError` can fire. Tests asserting on such
+    validation need to accept both (see `tests/test_search_space.py`).
+  - Hand-written guards that merely restate an annotation (e.g. the
+    `ConjugatePosterior` check in `models/gps.py`) are consequently not covered
+    by the suite. Keep them anyway — they are what non-beartype users hit.
+    Guards that check something the annotation does *not* (capability
+    `isinstance` checks, positivity, tag consistency) remain fully covered.
 
 ## Architecture
 

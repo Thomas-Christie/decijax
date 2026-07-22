@@ -5,14 +5,10 @@ from dataclasses import dataclass
 import jax.numpy as jnp
 import jax.random as jr
 from gpjax.dataset import Dataset
-from gpjax.typing import (
-    Array,
-    Float,
-    Int,
-    KeyArray,
-)
+from jaxtyping import Array, Float, Int
 
 from decijax.search_space import ContinuousSearchSpace
+from decijax.typing import KeyArray
 
 
 @dataclass

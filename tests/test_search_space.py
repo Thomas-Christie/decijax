@@ -6,14 +6,11 @@ from decijax.search_space import (
     AbstractSearchSpace,
     ContinuousSearchSpace,
 )
-from jax import config
 from jaxtyping import (
     Array,
     Float,
     TypeCheckError,
 )
-
-config.update("jax_enable_x64", True)
 
 
 def test_abstract_search_space():

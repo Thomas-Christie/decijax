@@ -1,7 +1,3 @@
-from jax import config
-
-config.update("jax_enable_x64", True)
-
 import gpjax as gpx
 import jax.numpy as jnp
 import jax.random as jr
@@ -24,12 +20,12 @@ from decijax.search_space import (
     ContinuousSearchSpace,
 )
 from decijax.test_functions import NegativeQuadratic
+from decijax.typing import KeyArray
 from decijax.utils import (
     OBJECTIVE,
     build_function_evaluator,
 )
 from gpjax.dataset import Dataset
-from gpjax.typing import KeyArray
 
 from tests.utils import QuadraticSinglePointAcquisitionFunctionBuilder
 

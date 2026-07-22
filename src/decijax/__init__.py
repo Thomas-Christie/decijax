@@ -7,6 +7,7 @@ from decijax import (
     models,
     search_space,
     test_functions,
+    typing,
     utils,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "models",
     "search_space",
     "test_functions",
+    "typing",
     "utils",
 ]

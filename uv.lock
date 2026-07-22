@@ -563,7 +563,6 @@ wheels = [
 name = "decijax"
 source = { editable = "." }
 dependencies = [
-    { name = "beartype" },
     { name = "equinox" },
     { name = "gpjax" },
     { name = "jax" },
@@ -577,6 +576,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "beartype" },
     { name = "coverage" },
     { name = "jupytext" },
     { name = "pre-commit" },
@@ -588,6 +588,7 @@ dev = [
     { name = "xdoctest" },
 ]
 docs = [
+    { name = "beartype" },
     { name = "ipykernel" },
     { name = "jupytext" },
     { name = "matplotlib" },
@@ -602,7 +603,6 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beartype", specifier = ">0.16.1" },
     { name = "equinox", specifier = ">=0.11.0" },
     { name = "gpjax", specifier = ">=0.11.0" },
     { name = "jax", specifier = ">=0.7.2" },
@@ -616,6 +616,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "beartype", specifier = ">0.16.1" },
     { name = "coverage", specifier = ">=7.2.2" },
     { name = "jupytext", specifier = ">=1.19.3" },
     { name = "pre-commit", specifier = ">=3.2.2" },
@@ -627,6 +628,7 @@ dev = [
     { name = "xdoctest", specifier = ">=1.1.1" },
 ]
 docs = [
+    { name = "beartype", specifier = ">0.16.1" },
     { name = "ipykernel", specifier = ">=6.29.0" },
     { name = "jupytext", specifier = ">=1.19.3" },
     { name = "matplotlib", specifier = ">=3.11.0" },

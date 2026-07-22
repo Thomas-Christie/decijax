@@ -7,7 +7,6 @@ import jax.numpy as jnp
 import numpyro.distributions as dist
 from gpjax.dataset import Dataset
 from gpjax.gps import AbstractMeanFunction
-from gpjax.typing import KeyArray
 from jaxtyping import (
     Array,
     Float,
@@ -15,6 +14,7 @@ from jaxtyping import (
 )
 
 from decijax.search_space import ContinuousSearchSpace
+from decijax.typing import KeyArray
 
 
 class AbstractContinuousTestFunction(AbstractMeanFunction):

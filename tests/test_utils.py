@@ -1,10 +1,3 @@
-from gpjax.gps import Prior
-from gpjax.kernels.stationary.rbf import RBF
-from gpjax.likelihoods import Gaussian
-from jax import config
-
-config.update("jax_enable_x64", True)
-
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -14,16 +7,16 @@ from decijax.test_functions import (
     NegativeForrester,
     NegativeLogarithmicGoldsteinPrice,
 )
+from decijax.typing import KeyArray
 from decijax.utils import (
     OBJECTIVE,
     build_function_evaluator,
     get_best_latent_observation_val,
 )
-from gpjax.typing import (
-    Array,
-    Float,
-    KeyArray,
-)
+from gpjax.gps import Prior
+from gpjax.kernels.stationary.rbf import RBF
+from gpjax.likelihoods import Gaussian
+from jaxtyping import Array, Float
 
 
 def test_build_function_evaluator():
