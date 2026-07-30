@@ -5,6 +5,7 @@ from decijax.acquisition_functions.base import (
 )
 from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
+    LogExpectedImprovement,
 )
 from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
@@ -29,7 +30,12 @@ from tests.utils import (
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 @pytest.mark.parametrize(
     "acquisition_function_builder",
-    [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
+    [
+        ExpectedImprovement,
+        LogExpectedImprovement,
+        ProbabilityOfImprovement,
+        ThompsonSampling,
+    ],
 )
 def test_acquisition_function_no_objective_model_raises_error(
     acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
@@ -49,7 +55,12 @@ def test_acquisition_function_no_objective_model_raises_error(
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 @pytest.mark.parametrize(
     "acquisition_function_builder",
-    [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
+    [
+        ExpectedImprovement,
+        LogExpectedImprovement,
+        ProbabilityOfImprovement,
+        ThompsonSampling,
+    ],
 )
 def test_model_without_required_capability_raises_error(
     acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
@@ -66,7 +77,12 @@ def test_model_without_required_capability_raises_error(
 
 @pytest.mark.parametrize(
     "acquisition_function_builder",
-    [ExpectedImprovement, ProbabilityOfImprovement, ThompsonSampling],
+    [
+        ExpectedImprovement,
+        LogExpectedImprovement,
+        ProbabilityOfImprovement,
+        ThompsonSampling,
+    ],
 )
 @pytest.mark.parametrize(
     "test_target_function",
