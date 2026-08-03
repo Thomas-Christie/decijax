@@ -108,10 +108,10 @@ class AbstractDecisionMaker(ABC):
         """Get the point(s) to be queried next.
 
         Args:
-            key (KeyArray): JAX PRNG key for controlling random state.
+            key: JAX PRNG key for controlling random state.
 
         Returns:
-            Float[Array, "1 D"]: Point to be queried next
+            Point(s) to be queried next.
         """
         raise NotImplementedError
 
@@ -141,7 +141,7 @@ class AbstractDecisionMaker(ABC):
     def run(
         self, n_steps: int, black_box_function_evaluator: FunctionEvaluator
     ) -> Mapping[str, Dataset]:
-        """Run the decision making loop continuously for for `n_steps`.
+        """Run the decision making loop continuously for `n_steps`.
 
         This is broken down into three main steps:
         1. Call the `ask` method to get the point to be queried next.
@@ -156,14 +156,14 @@ class AbstractDecisionMaker(ABC):
         list are executed, taking the decision maker as the sole argument.
 
         Args:
-            n_steps (int): Number of steps to run the decision making loop for.
-            black_box_function_evaluator (FunctionEvaluator): Function evaluator which
-                evaluates the black box functions of interest at supplied points.
+            n_steps: Number of steps to run the decision making loop for.
+            black_box_function_evaluator: Function evaluator which evaluates the black
+                box functions of interest at supplied points.
 
         Returns:
-            Mapping[str, Dataset]: Dictionary of datasets containing the observations
-            made throughout the decision making loop, as well as the initial data
-            supplied when initialising the `DecisionMaker`.
+            Dictionary of datasets containing the observations made throughout the
+            decision making loop, as well as the initial data supplied when
+            initialising the `DecisionMaker`.
         """
         for _ in range(n_steps):
             query_point = self.ask(self.key)
@@ -204,10 +204,12 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
     to plot values of interest during the optimization process.
 
     Attributes:
-        acquisition_function_builder (AbstractAcquisitionFunctionBuilder): Object which
-                builds acquisition functions from posteriors and datasets, to decide where to query next. In a typical Bayesian optimisation setup the point chosen to be queried next is the point which maximizes the acquisition function.
-        acquisition_maximizer (AbstractAcquisitionMaximizer): Object which maximizes
-            acquisition functions over the search space.
+        acquisition_function_builder: Object which builds acquisition functions from
+            posteriors and datasets, to decide where to query next. In a typical
+            Bayesian optimisation setup the point chosen to be queried next is the
+            point which maximizes the acquisition function.
+        acquisition_maximizer: Object which maximizes acquisition functions over the
+            search space.
     """
 
     acquisition_function_builder: AbstractAcquisitionFunctionBuilder
@@ -242,14 +244,14 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
         (i.e. `self.batch_size` must be 1). However, Thompson sampling can be used in a
         batched setting by drawing a batch of different samples from the GP posterior.
         This is done by calling `build_acquisition_function` with different keys
-        sequentilly, and optimising each of these individual samples in sequence in
+        sequentially, and optimising each of these individual samples in sequence in
         order to obtain `self.batch_size` points to query next.
 
         Args:
-            key (KeyArray): JAX PRNG key for controlling random state.
+            key: JAX PRNG key for controlling random state.
 
         Returns:
-            Float[Array, "B D"]: Point(s) to be queried next.
+            Point(s) to be queried next.
         """
         self.current_acquisition_functions = []
         maximizers = []

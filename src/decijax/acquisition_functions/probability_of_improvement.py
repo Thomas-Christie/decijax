@@ -67,16 +67,15 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         probability of improvement is computed per sample and averaged.
 
         Args:
-            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-                the acquisition function. One model must correspond to the `OBJECTIVE`
-                key and support Gaussian prediction.
-            key (KeyArray): JAX PRNG key used for random number generation. Since
-                the probability of improvement is computed deterministically from the
-                predictive posterior, the key is not used.
+            models: Dictionary of models used to form the acquisition function. One
+                model must correspond to the `OBJECTIVE` key and support Gaussian
+                prediction.
+            key: JAX PRNG key used for random number generation. Since the probability
+                of improvement is computed deterministically from the predictive
+                posterior, the key is not used.
 
         Returns:
-            SinglePointAcquisitionFunction: the probability of improvement acquisition
-                function.
+            The Probability of Improvement acquisition function.
         """
         self.check_objective_present(models)
         objective_model = models[OBJECTIVE]
@@ -139,16 +138,15 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
         log probability of improvement is computed per sample and averaged.
 
         Args:
-            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-                the acquisition function. One model must correspond to the `OBJECTIVE`
-                key and support Gaussian prediction.
-            key (KeyArray): JAX PRNG key used for random number generation. Since
-                the log probability of improvement is computed deterministically from
-                the predictive posterior, the key is not used.
+            models: Dictionary of models used to form the acquisition function. One
+                model must correspond to the `OBJECTIVE` key and support Gaussian
+                prediction.
+            key: JAX PRNG key used for random number generation. Since the log
+                probability of improvement is computed deterministically from the
+                predictive posterior, the key is not used.
 
         Returns:
-            SinglePointAcquisitionFunction: the log probability of improvement
-                acquisition function.
+            The Log Probability of Improvement acquisition function.
         """
         self.check_objective_present(models)
         objective_model = models[OBJECTIVE]

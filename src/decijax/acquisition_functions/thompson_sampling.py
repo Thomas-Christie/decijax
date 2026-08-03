@@ -39,17 +39,16 @@ class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
         returns it as an acquisition function to be *maximised*.
 
         Args:
-            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-                the acquisition function. One model must correspond to the `OBJECTIVE`
-                key and support differentiable sample paths, as we sample from the
-                objective posterior to form the acquisition function.
-            key (KeyArray): JAX PRNG key used for random number generation. This
-                can be changed to draw different samples.
+            models: Dictionary of models used to form the acquisition function. One
+                model must correspond to the `OBJECTIVE` key and support differentiable
+                sample paths, as we sample from the objective posterior to form the
+                acquisition function.
+            key: JAX PRNG key used for random number generation. This can be changed to
+                draw different samples.
 
         Returns:
-            SinglePointAcquisitionFunction: An approximate sample path from the
-                objective model posterior to be *maximised* in order to decide which
-                point to query next.
+            An approximate sample path from the objective model posterior to be
+            *maximised* in order to decide which point to query next.
         """
         self.check_objective_present(models)
 

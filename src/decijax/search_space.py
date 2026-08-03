@@ -28,8 +28,8 @@ class AbstractSearchSpace(ABC):
         """Sample points from the search space.
 
         Args:
-            num_points (int): Number of points to be sampled from the search space.
-            key (KeyArray): JAX PRNG key.
+            num_points: Number of points to be sampled from the search space.
+            key: JAX PRNG key.
 
         Returns:
             A batch of `num_points` points sampled from the search space.
@@ -70,8 +70,8 @@ class ContinuousSearchSpace(AbstractSearchSpace):
         """Sample points from the search space using a Sobol sequence.
 
         Args:
-            num_points (int): Number of points to be sampled from the search space.
-            key (KeyArray): JAX PRNG key.
+            num_points: Number of points to be sampled from the search space.
+            key: JAX PRNG key.
 
         Returns:
             `num_points` points sampled from the search space using a Sobol sequence.

@@ -21,9 +21,9 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
     """Abstract base class for continuous test functions.
 
     Attributes:
-        search_space (ContinuousSearchSpace): Search space for the function.
-        maximizer (Float[Array, '1 D']): Maximizer of the function (to 5 decimal places)
-        maximum (Float[Array, '1 1']): Maximum of the function (to 5 decimal places).
+        search_space: Search space for the function.
+        maximizer: Maximizer of the function (to 5 decimal places).
+        maximum: Maximum of the function (to 5 decimal places).
     """
 
     search_space: ContinuousSearchSpace
@@ -36,13 +36,13 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
         """Generate a toy dataset from the test function.
 
         Args:
-            num_points (int): Number of points to sample.
-            key (KeyArray): JAX PRNG key.
-            obs_stddev (float): (Optional) standard deviation of Gaussian distributed
-                noise added to observations.
+            num_points: Number of points to sample.
+            key: JAX PRNG key.
+            obs_stddev: (Optional) standard deviation of Gaussian distributed noise
+                added to observations.
 
         Returns:
-            Dataset: Dataset of points sampled from the test function.
+            Dataset of points sampled from the test function.
         """
         X = self.search_space.sample(num_points=num_points, key=key)
         gaussian_noise = dist.Normal(
@@ -59,11 +59,11 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
         """Generate test points from the search space of the test function.
 
         Args:
-            num_points (int): Number of points to sample.
-            key (KeyArray): JAX PRNG key.
+            num_points: Number of points to sample.
+            key: JAX PRNG key.
 
         Returns:
-            Float[Array, 'N D']: Test points sampled from the search space.
+            Test points sampled from the search space.
         """
         return self.search_space.sample(num_points=num_points, key=key)
 
@@ -76,10 +76,10 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
         """Evaluate the test function at a set of points.
 
         Args:
-            x (Float[Array, 'N D']): Points to evaluate the test function at.
+            x: Points to evaluate the test function at.
 
         Returns:
-            Float[Array, 'N 1']: Values of the test function at the points.
+            Values of the test function at the points.
         """
         raise NotImplementedError
 

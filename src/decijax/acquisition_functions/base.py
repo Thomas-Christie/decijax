@@ -71,8 +71,8 @@ class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
             key: JAX PRNG key used for random number generation.
 
         Returns:
-            SinglePointAcquisitionFunction: Acquisition function to be *maximised* in
-                order to decide which point to query next.
+            Acquisition function to be *maximised* in order to decide which point to
+            query next.
         """
         raise NotImplementedError
 

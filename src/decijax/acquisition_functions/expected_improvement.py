@@ -51,18 +51,16 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         marginalisation $`\mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]`$.
 
         Args:
-            models (Mapping[str, ProbabilisticModel]): Dictionary of models used to form
-                the acquisition function. One model must correspond to the `OBJECTIVE`
-                key and support Gaussian prediction, as we use the objective posterior
-                to form the acquisition function.
-            key (KeyArray): JAX PRNG key used for random number generation. Since
-                the expected improvement is computed deterministically, the key is not
-                used.
+            models: Dictionary of models used to form the acquisition function. One
+                model must correspond to the `OBJECTIVE` key and support Gaussian
+                prediction, as we use the objective posterior to form the acquisition
+                function.
+            key: JAX PRNG key used for random number generation. Since the expected
+                improvement is computed deterministically, the key is not used.
 
         Returns:
-            SinglePointAcquisitionFunction: The Expected Improvement acquisition
-                function to to be *maximised* in order to decide which point to query
-                next.
+            The Expected Improvement acquisition function to be *maximised* in order to
+            decide which point to query next.
         """
         self.check_objective_present(models)
         objective_model = models[OBJECTIVE]

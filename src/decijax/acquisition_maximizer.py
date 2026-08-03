@@ -28,14 +28,12 @@ def _get_discrete_maximizer(
     """Get the point which maximises the acquisition function evaluated at a given set of points.
 
     Args:
-        query_points: set of points at which to evaluate the acquisition function, as
-            an array of shape `[n_points, n_dims]`.
+        query_points: set of points at which to evaluate the acquisition function.
         acquisition_function: the single point acquisition function to be evaluated at
             `query_points`.
 
     Returns:
-        Array of shape `[1, n_dims]` representing the point which maximises the
-        acquisition function.
+        Array representing the point which maximises the acquisition function.
     """
     acquisition_function_values = acquisition_function(query_points)
     max_acquisition_function_value_idx = jnp.argmax(
