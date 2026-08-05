@@ -8,6 +8,7 @@ from decijax.acquisition_functions.base import (
 )
 from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
+    LogExpectedImprovement,
 )
 from decijax.acquisition_functions.probability_of_improvement import (
     LogProbabilityOfImprovement,
@@ -20,6 +21,7 @@ __all__ = [
     "AbstractAcquisitionFunctionBuilder",
     "AbstractSinglePointAcquisitionFunctionBuilder",
     "ExpectedImprovement",
+    "LogExpectedImprovement",
     "LogProbabilityOfImprovement",
     "SinglePointAcquisitionFunction",
     "ThompsonSampling",
