@@ -50,7 +50,8 @@ class AbstractDecisionMaker(ABC):
             observations, in their original (untransformed) space, and are used to refit
             the models via the `model_builders`. Tags are used to distinguish datasets,
             and correspond to tags in `model_builders`.
-        key: JAX random key, used to generate random numbers.
+        key: JAX PRNG key owned by the decision maker, acting as the source of
+            randomness for the initial model fit and for each step of `run`.
         batch_size: Number of points to query at each step of the decision making
             loop. Note that `SinglePointAcquisitionFunction`s are only capable of generating
             one point to be queried at each iteration of the decision making loop.
@@ -101,7 +102,8 @@ class AbstractDecisionMaker(ABC):
         # Build models
         self.models: dict[str, ProbabilisticModel] = {}
         for tag, model_builder in self.model_builders.items():
-            self.models[tag] = model_builder.build(self.datasets[tag], self.key)
+            self.key, subkey = jr.split(self.key)
+            self.models[tag] = model_builder.build(self.datasets[tag], subkey)
 
     @abstractmethod
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
@@ -135,8 +137,8 @@ class AbstractDecisionMaker(ABC):
             self.datasets[tag] += observation_dataset
 
         for tag, model_builder in self.model_builders.items():
-            key, _ = jr.split(key)
-            self.models[tag] = model_builder.build(self.datasets[tag], key)
+            key, subkey = jr.split(key)
+            self.models[tag] = model_builder.build(self.datasets[tag], subkey)
 
     def run(
         self, n_steps: int, black_box_function_evaluator: FunctionEvaluator
@@ -166,14 +168,14 @@ class AbstractDecisionMaker(ABC):
             initialising the `DecisionMaker`.
         """
         for _ in range(n_steps):
-            query_point = self.ask(self.key)
+            self.key, ask_key, tell_key = jr.split(self.key, 3)
+            query_point = self.ask(ask_key)
 
             for post_ask_method in self.post_ask:
                 post_ask_method(self, query_point)
 
-            self.key, _ = jr.split(self.key)
             observation_datasets = black_box_function_evaluator(query_point)
-            self.tell(observation_datasets, self.key)
+            self.tell(observation_datasets, tell_key)
 
             for post_tell_method in self.post_tell:
                 post_tell_method(self)
@@ -236,8 +238,7 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
         This method also stores the acquisition function(s) in
         `self.current_acquisition_functions` so that they can be accessed after the ask
         function has been called. This is useful for non-deterministic acquisition
-        functions, which may differ between calls to `ask` due to the splitting of
-        `self.key`.
+        functions, which may differ between calls to `ask` if the `key` argument gets changed.
 
         Note that in general `SinglePointAcquisitionFunction`s are only capable of
         generating one point to be queried at each iteration of the decision making loop
@@ -257,26 +258,25 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
         maximizers = []
         # We currently only allow Thompson sampling to be run with batch size > 1. More
         # batched acquisition functions may be added in the future.
-        if isinstance(self.acquisition_function_builder, ThompsonSampling) or (
-            (not isinstance(self.acquisition_function_builder, ThompsonSampling))
-            and (self.batch_size == 1)
+        if (
+            isinstance(self.acquisition_function_builder, ThompsonSampling)
+            or self.batch_size == 1
         ):
-            # Draw 'self.batch_size' Thompson samples and optimize each of them in order to
-            # obtain 'self.batch_size' points to query next.
+            # Draw 'self.batch_size' Thompson samples and optimize each of them in
+            # order to obtain 'self.batch_size' points to query next.
             for _ in range(self.batch_size):
-                decision_function = (
+                key, acq_fn_key, max_key = jr.split(key, 3)
+                acquisition_function = (
                     self.acquisition_function_builder.build_acquisition_function(
-                        self.models, key
+                        self.models, acq_fn_key
                     )
                 )
-                self.current_acquisition_functions.append(decision_function)
+                self.current_acquisition_functions.append(acquisition_function)
 
-                _, key = jr.split(key)
                 maximizer = self.acquisition_maximizer.maximize(
-                    decision_function, self.search_space, key
+                    acquisition_function, self.search_space, max_key
                 )
                 maximizers.append(maximizer)
-                _, key = jr.split(key)
 
             maximizers = jnp.concatenate(maximizers)
             return maximizers

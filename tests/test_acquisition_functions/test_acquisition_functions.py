@@ -99,12 +99,14 @@ def test_acquisition_functions_have_correct_shapes(
     num_test_points: int,
     key: KeyArray,
 ):
-    dataset = test_target_function.generate_dataset(num_points=10, key=key)
+    data_key, acq_key, test_key = jr.split(key, 3)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     model = generate_dummy_conjugate_model(dataset)
     models = {OBJECTIVE: model}
     acquisition_builder = acquisition_function_builder()
-    acquisition_function = acquisition_builder.build_acquisition_function(models, key)
-    test_key, _ = jr.split(key)
+    acquisition_function = acquisition_builder.build_acquisition_function(
+        models, acq_key
+    )
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     acquisition_function_values = acquisition_function(test_X)
     assert acquisition_function_values.shape == (num_test_points, 1)

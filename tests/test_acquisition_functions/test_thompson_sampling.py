@@ -43,17 +43,19 @@ def test_thompson_sampling_acquisition_function_same_key_same_function(
     num_test_points: int,
     key: KeyArray,
 ):
-    dataset = test_target_function.generate_dataset(num_points=10, key=key)
+    data_key, sample_key, test_key = jr.split(key, 3)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
     models = {OBJECTIVE: model}
+    # Deliberately reusing `sample_key` here: drawing with the same key is what the
+    # test asserts gives the same sample path.
     ts_acquisition_function_one = ThompsonSampling().build_acquisition_function(
-        models, key
+        models, sample_key
     )
     ts_acquisition_function_two = ThompsonSampling().build_acquisition_function(
-        models, key
+        models, sample_key
     )
-    test_key, _ = jr.split(key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)
     ts_acquisition_function_two_values = ts_acquisition_function_two(test_X)
@@ -78,12 +80,11 @@ def test_thompson_sampling_acquisition_function_different_key_different_function
     num_test_points: int,
     key: KeyArray,
 ):
-    dataset = test_target_function.generate_dataset(num_points=10, key=key)
+    data_key, sample_one_key, sample_two_key, test_key = jr.split(key, 4)
+    dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
     models = {OBJECTIVE: model}
-    sample_one_key = key
-    sample_two_key, _ = jr.split(key)
     ts_acquisition_builder = ThompsonSampling()
     ts_acquisition_function_one = ts_acquisition_builder.build_acquisition_function(
         models, sample_one_key
@@ -91,7 +92,6 @@ def test_thompson_sampling_acquisition_function_different_key_different_function
     ts_acquisition_function_two = ts_acquisition_builder.build_acquisition_function(
         models, sample_two_key
     )
-    test_key, _ = jr.split(sample_two_key)
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)
     ts_acquisition_function_two_values = ts_acquisition_function_two(test_X)

@@ -61,9 +61,9 @@ def test_same_key_same_dataset(
 def test_different_key_different_dataset(
     test_function: PoissonTestFunction, num_samples: int, key: KeyArray
 ):
-    dataset_one = test_function.generate_dataset(num_samples, key)
-    key, _ = jr.split(key)
-    dataset_two = test_function.generate_dataset(num_samples, key)
+    key_one, key_two = jr.split(key)
+    dataset_one = test_function.generate_dataset(num_samples, key_one)
+    dataset_two = test_function.generate_dataset(num_samples, key_two)
     assert not jnp.equal(dataset_one.X, dataset_two.X).all()
     assert not jnp.equal(dataset_one.y, dataset_two.y).all()
 
@@ -87,7 +87,7 @@ def test_same_key_same_test_points(
 def test_different_key_different_test_points(
     test_function: PoissonTestFunction, num_samples: int, key: KeyArray
 ):
-    test_points_one = test_function.generate_test_points(num_samples, key)
-    key, _ = jr.split(key)
-    test_points_two = test_function.generate_test_points(num_samples, key)
+    key_one, key_two = jr.split(key)
+    test_points_one = test_function.generate_test_points(num_samples, key_one)
+    test_points_two = test_function.generate_test_points(num_samples, key_two)
     assert not jnp.equal(test_points_one, test_points_two).all()

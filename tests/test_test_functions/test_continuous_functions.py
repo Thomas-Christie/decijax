@@ -111,10 +111,13 @@ def test_noisy_dataset(
     test_function: AbstractContinuousTestFunction, obs_stddev: float
 ):
     num_points = 100
+    # `generate_dataset` splits its key into a sampling key and a noise key, so we
+    # mirror that split here to reconstruct the noise it applied.
+    _, noise_key = jr.split(jr.key(42))
     dataset = test_function.generate_dataset(num_points, jr.key(42), obs_stddev)
     noise = dist.Normal(jnp.zeros(num_points), obs_stddev * jnp.ones(num_points))
     expected_y = test_function(dataset.X) + jnp.transpose(
-        noise.sample(jr.key(42), sample_shape=(1,))
+        noise.sample(noise_key, sample_shape=(1,))
     )
     assert jnp.all(dataset.y == expected_y)
 
@@ -143,9 +146,9 @@ def test_same_key_same_dataset(
 def test_different_key_different_dataset(
     test_function: AbstractContinuousTestFunction, num_samples: int, key: KeyArray
 ):
-    dataset_one = test_function.generate_dataset(num_samples, key)
-    key, _ = jr.split(key)
-    dataset_two = test_function.generate_dataset(num_samples, key)
+    key_one, key_two = jr.split(key)
+    dataset_one = test_function.generate_dataset(num_samples, key_one)
+    dataset_two = test_function.generate_dataset(num_samples, key_two)
     assert not jnp.equal(dataset_one.X, dataset_two.X).all()
     assert not jnp.equal(dataset_one.y, dataset_two.y).all()
 
@@ -173,7 +176,7 @@ def test_same_key_same_test_points(
 def test_different_key_different_test_points(
     test_function: AbstractContinuousTestFunction, num_samples: int, key: KeyArray
 ):
-    test_points_one = test_function.generate_test_points(num_samples, key)
-    key, _ = jr.split(key)
-    test_points_two = test_function.generate_test_points(num_samples, key)
+    key_one, key_two = jr.split(key)
+    test_points_one = test_function.generate_test_points(num_samples, key_one)
+    test_points_two = test_function.generate_test_points(num_samples, key_two)
     assert not jnp.equal(test_points_one, test_points_two).all()

@@ -4,6 +4,7 @@ from abc import abstractmethod
 from dataclasses import field
 
 import jax.numpy as jnp
+import jax.random as jr
 import numpyro.distributions as dist
 from gpjax.dataset import Dataset
 from gpjax.gps import AbstractMeanFunction
@@ -44,12 +45,13 @@ class AbstractContinuousTestFunction(AbstractMeanFunction):
         Returns:
             Dataset of points sampled from the test function.
         """
-        X = self.search_space.sample(num_points=num_points, key=key)
+        sample_key, noise_key = jr.split(key)
+        X = self.search_space.sample(num_points=num_points, key=sample_key)
         gaussian_noise = dist.Normal(
             jnp.zeros(num_points), obs_stddev * jnp.ones(num_points)
         )
         y = self.evaluate(X) + jnp.transpose(
-            gaussian_noise.sample(key, sample_shape=(1,))
+            gaussian_noise.sample(noise_key, sample_shape=(1,))
         )
         return Dataset(X=X, y=y)
 

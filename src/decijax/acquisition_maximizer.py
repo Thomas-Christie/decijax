@@ -123,9 +123,9 @@ class ContinuousSinglePointAcquisitionMaximizer(
         maximizer = None
 
         for _ in range(self.num_restarts):
-            key, _ = jr.split(key)
+            key, subkey = jr.split(key)
             initial_sample_points = search_space.sample(
-                self.num_initial_samples, key=key
+                self.num_initial_samples, key=subkey
             )
             best_initial_sample_point = _get_discrete_maximizer(
                 initial_sample_points, acquisition_function
