@@ -563,14 +563,12 @@ wheels = [
 name = "decijax"
 source = { editable = "." }
 dependencies = [
-    { name = "equinox" },
     { name = "gpjax" },
     { name = "jax" },
     { name = "jaxlib" },
     { name = "jaxtyping" },
     { name = "numpy" },
     { name = "numpyro" },
-    { name = "optax" },
     { name = "scipy" },
 ]
 
@@ -589,6 +587,7 @@ dev = [
 ]
 docs = [
     { name = "beartype" },
+    { name = "equinox" },
     { name = "ipykernel" },
     { name = "jupytext" },
     { name = "matplotlib" },
@@ -603,14 +602,12 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "equinox", specifier = ">=0.11.0" },
     { name = "gpjax", specifier = ">=0.11.0" },
     { name = "jax", specifier = ">=0.7.2" },
     { name = "jaxlib", specifier = ">=0.7.2" },
     { name = "jaxtyping", specifier = ">0.2.10" },
     { name = "numpy", specifier = ">=2.0.0" },
     { name = "numpyro", specifier = ">=0.19.0" },
-    { name = "optax", specifier = ">0.2.1" },
     { name = "scipy", specifier = ">=1.13.0" },
 ]
 
@@ -629,6 +626,7 @@ dev = [
 ]
 docs = [
     { name = "beartype", specifier = ">0.16.1" },
+    { name = "equinox", specifier = ">=0.11.0" },
     { name = "ipykernel", specifier = ">=6.29.0" },
     { name = "jupytext", specifier = ">=1.19.3" },
     { name = "matplotlib", specifier = ">=3.11.0" },

@@ -15,7 +15,7 @@ Before starting work on a new feature or significant change, please open an issu
    ```
 3. **Install Dependencies**: Navigate to the project directory and install the required dependencies. We use [uv](https://docs.astral.sh/uv/) for managing dependencies, and highly recommend that you do too. To get started quickly, after installing `uv`, you can simply run:
     ```
-    uv sync --all-extras
+    uv sync --all-groups
     ```
     and this will create a virtual environment and install all necessary packages for development.
 

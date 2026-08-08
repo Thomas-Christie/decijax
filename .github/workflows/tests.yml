@@ -7,27 +7,29 @@ on:
 
 jobs:
   unit-tests:
-    name: Run Tests
-    runs-on: ubuntu-latest
+    name: Run Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Select the Python versions to test against
         os: ["ubuntu-latest", "macos-latest"]
-        python-version: ["3.11"]
-      fail-fast: true
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+      fail-fast: false
+    # Overrides the pin in .python-version
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - name: Check out the code
-        uses: actions/checkout@v3.5.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       # Install uv
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v9.0.0
 
       # Install dependencies
       - name: Install dependencies
@@ -42,10 +44,10 @@ jobs:
         run: uv run pytest . -v --cov=./src/decijax --cov-report=xml:./coverage.xml
 
       - name: Upload code coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
           name: decijax
           flags: unittests
           env_vars: OS,PYTHON
