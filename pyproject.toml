@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["gaussian-processes", "jax", "decision-making"]
+keywords = ["gaussian-processes", "jax", "decision-making", "bayesian-optimisation"]
 authors = [{ name = "Thomas Christie", email = "thomashamish@hotmail.com" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -65,17 +65,20 @@ dev = [
 ]
 
 [project.urls]
+Documentation = "https://thomas-christie.github.io/decijax/"
 Issues = "https://github.com/Thomas-Christie/decijax/issues"
 Source = "https://github.com/Thomas-Christie/decijax"
 
 [tool.hatch.version]
-path = "src/decijax/__about__.py"
+path = "src/decijax/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
 
 [tool.coverage.run]
 source_pkgs = ["decijax", "tests"]
 branch = true
 parallel = true
-omit = ["src/decijax/__about__.py"]
 
 [tool.coverage.paths]
 decijax = ["src/decijax", "*/decijax/src/decijax"]

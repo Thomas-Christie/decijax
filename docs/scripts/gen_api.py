@@ -31,7 +31,7 @@ TITLE_OVERRIDES = {
 }
 
 # Module basenames to skip entirely (private/dunder handled separately).
-EXCLUDE_STEMS = {"__main__", "__about__"}
+EXCLUDE_STEMS = {"__main__"}
 
 
 def _title(part: str) -> str:

@@ -7,7 +7,8 @@ probability of improvement, expected improvement and Thompson sampling. The
 implementations are built upon the JAX library, enabling automatic differentiation,
 vectorisation, and just-in-time (JIT) compilation for high performance. This allows for efficient research, development, and deployment of decision-making agents.
 
-> [!WARNING]
+> **⚠️ Warning**
+>
 > `decijax` is currently under active development, and the API is likely to
 > change in the near future.
 
@@ -17,13 +18,27 @@ vectorisation, and just-in-time (JIT) compilation for high performance. This all
 
 - [decijax](#decijax)
   - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Documentation](#documentation)
   - [Contributing](#contributing)
   - [License](#license)
 
+## Installation
+
+`decijax` requires Python 3.11 or later. Install the latest release from PyPI with:
+
+```bash
+pip install decijax
+```
+
+## Documentation
+
+Available at [https://thomas-christie.github.io/decijax/](https://thomas-christie.github.io/decijax/).
+
 ## Contributing
 
-Please refer to the [contributing guidelines](CONTRIBUTING.md) file for guidelines on
-how to contribute to the project.
+Please refer to the [contributing guidelines](https://github.com/Thomas-Christie/decijax/blob/main/CONTRIBUTING.md) file for guidelines on how to contribute to the
+project.
 
 ## License
 

@@ -1,0 +1,43 @@
+name: Publish to PyPI
+
+on:
+    push:
+        tags:
+            - "v*"
+
+jobs:
+    build:
+        name: Build distributions
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out the tag
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - name: Install uv
+              uses: astral-sh/setup-uv@v9.0.0
+            - name: Build the sdist and wheel
+              run: uv build
+            - name: Store the distributions
+              uses: actions/upload-artifact@v7
+              with:
+                  name: python-package-distributions
+                  path: dist/
+
+    publish-to-pypi:
+        name: Publish to PyPI
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: pypi
+            url: https://pypi.org/p/decijax
+        permissions:
+            id-token: write
+        steps:
+            - name: Download the distributions
+              uses: actions/download-artifact@v8
+              with:
+                  name: python-package-distributions
+                  path: dist/
+            - name: Publish to PyPI
+              uses: pypa/gh-action-pypi-publish@release/v1

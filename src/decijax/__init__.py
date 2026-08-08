@@ -12,6 +12,8 @@ from decijax import (
     utils,
 )
 
+__version__ = "0.0.1"
+
 __all__ = [
     "acquisition_functions",
     "acquisition_maximizer",
