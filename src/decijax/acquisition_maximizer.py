@@ -8,7 +8,6 @@ from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
-import jax.random as jr
 import numpy as onp
 from jaxtyping import Array, Float
 from scipy.optimize import minimize
@@ -21,28 +20,26 @@ from decijax.search_space import (
 from decijax.typing import KeyArray
 
 
-def _get_discrete_maximizer(
+def _get_top_k_query_points(
     query_points: Float[Array, "N D"],
     acquisition_function: SinglePointAcquisitionFunction,
-) -> Float[Array, "1 D"]:
-    """Get the point which maximises the acquisition function evaluated at a given set of points.
+    k: int,
+) -> Float[Array, "K D"]:
+    """Get the `k` points with the highest acquisition function values.
 
     Args:
         query_points: set of points at which to evaluate the acquisition function.
-        acquisition_function: the single point acquisition function to be evaluated at
+        acquisition_function: the acquisition function to be evaluated at
+            `query_points`.
+        k: number of points to return. Must be no greater than the number of
             `query_points`.
 
     Returns:
-        Array representing the point which maximises the acquisition function.
+        Array of the `k` best points, ordered by decreasing acquisition function value.
     """
     acquisition_function_values = acquisition_function(query_points)
-    max_acquisition_function_value_idx = jnp.argmax(
-        acquisition_function_values, axis=0, keepdims=True
-    )
-    best_sample_point = jnp.take_along_axis(
-        query_points, max_acquisition_function_value_idx, axis=0
-    )
-    return best_sample_point
+    _, top_k_indices = jax.lax.top_k(acquisition_function_values[:, 0], k)
+    return query_points[top_k_indices]
 
 
 @dataclass
@@ -75,28 +72,35 @@ class ContinuousSinglePointAcquisitionMaximizer(
 ):
     """Maximize acquisition functions over the continuous domain with L-BFGS-B.
 
-    First we sample the acquisition function at `num_initial_samples` points from the
-    search space, and then we run L-BFGS-B from the best of these initial points. We
-    run this process `num_restarts` number of times, each time sampling a different
-    random set of `num_initial_samples`initial points.
+    First we evaluate the acquisition function at `num_initial_samples` points sampled
+    from the search space, and then we run L-BFGS-B from each of the best
+    `num_optimization_runs` of these initial points, returning the best maximizer found
+    across these runs.
     """
 
     num_initial_samples: int
-    num_restarts: int
+    num_optimization_runs: int
 
     def __post_init__(self):
-        """Validate that `num_initial_samples` and `num_restarts` are positive.
+        """Validate `num_initial_samples` and `num_optimization_runs`.
 
         Raises:
-            ValueError: If `num_initial_samples` or `num_restarts` is less than 1.
+            ValueError: If `num_initial_samples` or `num_optimization_runs` is less
+                than 1, or if `num_optimization_runs` exceeds `num_initial_samples`.
         """
         if self.num_initial_samples < 1:
             raise ValueError(
                 f"num_initial_samples must be greater than 0, got {self.num_initial_samples}."
             )
-        elif self.num_restarts < 1:
+        elif self.num_optimization_runs < 1:
             raise ValueError(
-                f"num_restarts must be greater than 0, got {self.num_restarts}."
+                f"num_optimization_runs must be greater than 0, got {self.num_optimization_runs}."
+            )
+        elif self.num_optimization_runs > self.num_initial_samples:
+            raise ValueError(
+                "num_optimization_runs must be no greater than num_initial_samples, "
+                f"got num_optimization_runs={self.num_optimization_runs} and "
+                f"num_initial_samples={self.num_initial_samples}."
             )
 
     def maximize(
@@ -107,9 +111,9 @@ class ContinuousSinglePointAcquisitionMaximizer(
     ) -> Float[Array, "1 D"]:
         """Maximize the acquisition function with multi-start L-BFGS-B.
 
-        For each of `num_restarts` restarts, samples `num_initial_samples` points
-        from the search space, seeds L-BFGS-B from the best of them, and returns
-        the maximizer found across all restarts.
+        Samples `num_initial_samples` points from the search space, then runs L-BFGS-B
+        from each of the best `num_optimization_runs` of them, and returns the best
+        maximizer found across these runs.
 
         Args:
             acquisition_function: acquisition function to be maximized.
@@ -119,53 +123,48 @@ class ContinuousSinglePointAcquisitionMaximizer(
         Returns:
             Point at which the acquisition function is maximized.
         """
+        initial_sample_points = search_space.sample(self.num_initial_samples, key=key)
+        starting_points = _get_top_k_query_points(
+            initial_sample_points, acquisition_function, self.num_optimization_runs
+        )
+
+        def _scalar_acquisition_function(
+            x: Float[Array, "1 D"],
+        ) -> Float[Array, ""]:
+            """Returns the negative of the acquisition function as a scalar.
+
+            This is because acquisition functions should be *maximized* but scipy
+            *minimizes*.
+            """
+            return -acquisition_function(x)[0][0]
+
+        val_and_grad_fn = jax.value_and_grad(_scalar_acquisition_function)
+
+        def _objective_for_scipy(x_flat):
+            x = jnp.array(x_flat).reshape(1, -1)
+            val, grad = val_and_grad_fn(x)
+            return float(val), onp.array(grad.flatten(), dtype=onp.float64)
+
+        bounds = list(
+            zip(
+                onp.array(search_space.lower_bounds),
+                onp.array(search_space.upper_bounds),
+                strict=True,
+            )
+        )
+
         max_observed_acquisition_function_value = None
         maximizer = None
-
-        for _ in range(self.num_restarts):
-            key, subkey = jr.split(key)
-            initial_sample_points = search_space.sample(
-                self.num_initial_samples, key=subkey
-            )
-            best_initial_sample_point = _get_discrete_maximizer(
-                initial_sample_points, acquisition_function
-            )
-
-            def _scalar_acquisition_function(
-                x: Float[Array, "1 D"],
-            ) -> Float[Array, ""]:
-                """Returns the negative of the acquisition function as a scalar.
-
-                This is because acquisition functions should be *maximized* but scipy
-                *minimizes*.
-                """
-                return -acquisition_function(x)[0][0]
-
-            val_and_grad_fn = jax.value_and_grad(_scalar_acquisition_function)
-
-            def _objective_for_scipy(x_flat):
-                x = jnp.array(x_flat).reshape(1, -1)
-                val, grad = val_and_grad_fn(x)  # noqa: B023
-                return float(val), onp.array(grad.flatten(), dtype=onp.float64)
-
-            bounds = list(
-                zip(
-                    onp.array(search_space.lower_bounds),
-                    onp.array(search_space.upper_bounds),
-                    strict=True,
-                )
-            )
+        for starting_point in starting_points:
             result = minimize(
                 _objective_for_scipy,
-                x0=onp.array(best_initial_sample_point.flatten(), dtype=onp.float64),
+                x0=onp.array(starting_point, dtype=onp.float64),
                 method="L-BFGS-B",
                 jac=True,
                 bounds=bounds,
             )
             optimized_point = jnp.array(result.x).reshape(1, -1)
-            optimized_acquisition_function_value = acquisition_function(
-                optimized_point
-            )[0][0]
+            optimized_acquisition_function_value = -result.fun
             if (max_observed_acquisition_function_value is None) or (
                 optimized_acquisition_function_value
                 > max_observed_acquisition_function_value

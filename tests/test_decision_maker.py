@@ -73,7 +73,7 @@ def thompson_sampling_acquisition_function_builder() -> ThompsonSampling:
 @pytest.fixture
 def acquisition_maximizer() -> AbstractSinglePointAcquisitionMaximizer:
     return ContinuousSinglePointAcquisitionMaximizer(
-        num_initial_samples=1000, num_restarts=1
+        num_initial_samples=1000, num_optimization_runs=1
     )
 
 

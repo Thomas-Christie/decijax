@@ -268,11 +268,11 @@ ei = ExpectedImprovement()
 # 2021](https://arxiv.org/abs/2103.16649))). For instance, one may randomly sample the
 # acquisition function at a number of points proportional to the dimensionality of the input space, and one may run gradient-based optimisation from multiple of these points, to reduce the impact of converging upon local minima.
 #
-# We'll use the `ContinuousSinglePointAcquisitionMaximizer` from `decijax` in order to do this, which implements the functionality above. We specify `num_initial_samples=100`, to sample the acquisition function randomly at 100 points, and `num_restarts=1`, signifying that the gradient-based optimiser will be run from the best of these points.
+# We'll use the `ContinuousSinglePointAcquisitionMaximizer` from `decijax` in order to do this, which implements the functionality above. We specify `num_initial_samples=100`, to sample the acquisition function randomly at 100 points, and `num_optimization_runs=1`, signifying that the gradient-based optimiser will be run from the best of these points.
 
 # %%
 acq_maximizer = ContinuousSinglePointAcquisitionMaximizer(
-    num_initial_samples=100, num_restarts=1
+    num_initial_samples=100, num_optimization_runs=1
 )
 
 
@@ -501,7 +501,7 @@ camel_gp_builder = GPJaxConjugateGPBuilder(
 )
 
 camel_acq_maximizer = ContinuousSinglePointAcquisitionMaximizer(
-    num_initial_samples=1000, num_restarts=1
+    num_initial_samples=1000, num_optimization_runs=1
 )
 
 initial_sample_num = 5
