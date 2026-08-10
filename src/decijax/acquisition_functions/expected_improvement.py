@@ -175,7 +175,7 @@ class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     ----------
     [1] Ament, S., Daulton, S., Eriksson, D., Balandat, M., & Bakshy, E. (2023).
     Unexpected improvement to expected improvement for Bayesian optimization.
-    Advances in Neural Information Processing Systems, 36.
+    Neural Information Processing Systems (NeurIPS).
     """
 
     def build_acquisition_function(
