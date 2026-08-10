@@ -15,6 +15,7 @@ from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
 from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
+from decijax.acquisition_functions.upper_confidence_bound import UpperConfidenceBound
 
 __all__ = [
     "AcquisitionFunction",
@@ -26,4 +27,5 @@ __all__ = [
     "SinglePointAcquisitionFunction",
     "ThompsonSampling",
     "ProbabilityOfImprovement",
+    "UpperConfidenceBound",
 ]

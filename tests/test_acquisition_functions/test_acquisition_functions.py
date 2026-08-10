@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from functools import partial
+
 import jax.random as jr
 import pytest
 from decijax.acquisition_functions.base import (
@@ -11,6 +14,7 @@ from decijax.acquisition_functions.probability_of_improvement import (
     ProbabilityOfImprovement,
 )
 from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
+from decijax.acquisition_functions.upper_confidence_bound import UpperConfidenceBound
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -24,6 +28,15 @@ from tests.utils import (
     generate_dummy_conjugate_model,
 )
 
+# Most builders are parametrized as bare classes, but `UpperConfidenceBound` takes a
+# required `beta`, so the lists below hold zero-argument factories rather than types.
+AcquisitionFunctionBuilderFactory = Callable[
+    [], AbstractSinglePointAcquisitionFunctionBuilder
+]
+UPPER_CONFIDENCE_BOUND = pytest.param(
+    partial(UpperConfidenceBound, beta=4.0), id="UpperConfidenceBound"
+)
+
 
 @pytest.mark.filterwarnings(
     "ignore::UserWarning"
@@ -35,10 +48,11 @@ from tests.utils import (
         LogExpectedImprovement,
         ProbabilityOfImprovement,
         ThompsonSampling,
+        UPPER_CONFIDENCE_BOUND,
     ],
 )
 def test_acquisition_function_no_objective_model_raises_error(
-    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: AcquisitionFunctionBuilderFactory,
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -60,10 +74,11 @@ def test_acquisition_function_no_objective_model_raises_error(
         LogExpectedImprovement,
         ProbabilityOfImprovement,
         ThompsonSampling,
+        UPPER_CONFIDENCE_BOUND,
     ],
 )
 def test_model_without_required_capability_raises_error(
-    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: AcquisitionFunctionBuilderFactory,
 ):
     key = jr.key(42)
     neg_forrester = NegativeForrester()
@@ -82,6 +97,7 @@ def test_model_without_required_capability_raises_error(
         LogExpectedImprovement,
         ProbabilityOfImprovement,
         ThompsonSampling,
+        UPPER_CONFIDENCE_BOUND,
     ],
 )
 @pytest.mark.parametrize(
@@ -94,7 +110,7 @@ def test_model_without_required_capability_raises_error(
     "ignore::UserWarning"
 )  # Sampling with tfp causes JAX to raise a UserWarning due to some internal logic around jnp.argsort
 def test_acquisition_functions_have_correct_shapes(
-    acquisition_function_builder: type[AbstractSinglePointAcquisitionFunctionBuilder],
+    acquisition_function_builder: AcquisitionFunctionBuilderFactory,
     test_target_function: AbstractContinuousTestFunction,
     num_test_points: int,
     key: KeyArray,
