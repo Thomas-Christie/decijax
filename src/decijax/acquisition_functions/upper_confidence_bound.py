@@ -23,7 +23,7 @@ from decijax.utils import OBJECTIVE
 
 @dataclass
 class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
-    r"""Upper Confidence Bound acquisition function.
+    r"""Upper Confidence Bound acquisition function from [1].
 
     Given a predictive posterior distribution of the objective function $f$, the
     upper confidence bound at a test point $x$ is defined as:
@@ -33,15 +33,8 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
     where $\mu$ and $\sigma$ are the mean and standard deviation of the predictive
     distribution of the objective function at $x$.
 
-    Note that $\beta$ weights the *variance*, following [1], so it is
-    $\sqrt{\beta}$ that counts the standard deviations by which the bound sits
-    above the mean. [1] also grows $\beta$ with the iteration count to bound
-    cumulative regret, but instead we follow BoTorch and keep $\beta$ fixed.
-
     Attributes:
-        beta: Non-negative trade-off between exploitation and exploration. A
-            value of $4$, for instance, places the bound two standard deviations
-            above the mean.
+        beta: Non-negative trade-off between exploitation and exploration.
 
     References:
     ----------
@@ -56,8 +49,7 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
         """Perform post-initialisation validity checks.
 
         Raises:
-            ValueError: If `beta` is negative, which would leave its square root
-                undefined.
+            ValueError: If `beta` is negative.
         """
         if self.beta < 0.0:
             raise ValueError("Beta must be non-negative.")
@@ -70,9 +62,7 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
         r"""Build the Upper Confidence Bound acquisition function.
 
         For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
-        upper confidence bound is computed per sample and averaged, which is the
-        correct marginalisation
-        $`\mathbb{E}_\theta[\alpha_{\text{UCB},\theta}(\mathbf{x})]`$.
+        upper confidence bound is computed per sample and averaged.
 
         Args:
             models: Dictionary of models used to form the acquisition function. One

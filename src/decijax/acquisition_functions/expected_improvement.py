@@ -107,17 +107,17 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
 
         This computes the expected improvement over the "best" of the previously
         observed points, utilising the posterior distribution of the surrogate model.
-        For posterior distribution $`f(\cdot)`$, and best incumbent value $`\eta`$,
+        For posterior distribution $f(\cdot)$, and best incumbent value $\eta$,
         this is defined as:
 
-        ```math
+        $$
         \alpha_{\text{EI}}(\mathbf{x})
         = \mathbb{E}\left[\max(0, f(\mathbf{x}) - \eta)\right]
-        ```
+        $$
 
         For models carrying a leading sample axis (e.g. fully Bayesian GPs), the
         expected improvement is computed per sample and averaged, which is the correct
-        marginalisation $`\mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]`$.
+        marginalisation $\mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]$.
 
         Args:
             models: Dictionary of models used to form the acquisition function. One
@@ -185,18 +185,16 @@ class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
     ) -> SinglePointAcquisitionFunction:
         r"""Build the Log Expected Improvement acquisition function.
 
-        The expected improvement factorises as $`\sigma \cdot h(z)`$, for scaled
-        improvement $`z = \frac{\mu - \eta}{\sigma}`$ and
-        $`h(z) = \phi(z) + z\Phi(z)`$, so that:
+        The expected improvement factorises as $\sigma \cdot h(z)$, for scaled
+        improvement $z = \frac{\mu - \eta}{\sigma}$ and
+        $h(z) = \phi(z) + z\Phi(z)$, so that:
 
-        ```math
-        \alpha_{\text{LogEI}}(\mathbf{x}) = \log \sigma(\mathbf{x}) + \log h(z)
-        ```
+        $$\alpha_{\text{LogEI}}(\mathbf{x}) = \log \sigma(\mathbf{x}) + \log h(z)$$
 
         with the second term computed by `_log_ei_helper`. For models carrying a
         leading sample axis (e.g. fully Bayesian GPs), it is computed per sample and
         reduced with a log-mean-exp, the correct marginalisation
-        $`\log \mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]`$.
+        $\log \mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]$.
 
         Args:
             models: Dictionary of models used to form the acquisition function. One

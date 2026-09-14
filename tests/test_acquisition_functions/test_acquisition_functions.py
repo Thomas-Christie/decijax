@@ -3,18 +3,15 @@ from functools import partial
 
 import jax.random as jr
 import pytest
-from decijax.acquisition_functions.base import (
+from decijax.acquisition_functions import (
     AbstractSinglePointAcquisitionFunctionBuilder,
-)
-from decijax.acquisition_functions.expected_improvement import (
     ExpectedImprovement,
     LogExpectedImprovement,
-)
-from decijax.acquisition_functions.probability_of_improvement import (
+    LogProbabilityOfImprovement,
     ProbabilityOfImprovement,
+    ThompsonSampling,
+    UpperConfidenceBound,
 )
-from decijax.acquisition_functions.thompson_sampling import ThompsonSampling
-from decijax.acquisition_functions.upper_confidence_bound import UpperConfidenceBound
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -47,6 +44,7 @@ UPPER_CONFIDENCE_BOUND = pytest.param(
         ExpectedImprovement,
         LogExpectedImprovement,
         ProbabilityOfImprovement,
+        LogProbabilityOfImprovement,
         ThompsonSampling,
         UPPER_CONFIDENCE_BOUND,
     ],
@@ -73,6 +71,7 @@ def test_acquisition_function_no_objective_model_raises_error(
         ExpectedImprovement,
         LogExpectedImprovement,
         ProbabilityOfImprovement,
+        LogProbabilityOfImprovement,
         ThompsonSampling,
         UPPER_CONFIDENCE_BOUND,
     ],
@@ -96,6 +95,7 @@ def test_model_without_required_capability_raises_error(
         ExpectedImprovement,
         LogExpectedImprovement,
         ProbabilityOfImprovement,
+        LogProbabilityOfImprovement,
         ThompsonSampling,
         UPPER_CONFIDENCE_BOUND,
     ],
