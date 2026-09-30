@@ -53,9 +53,9 @@ def test_get_best_observation(
     mean_fn = test_target_function
     kernel = RBF(lengthscale=1.0 * jnp.ones(dataset.X.shape[1]))
     prior = Prior(kernel=kernel, mean_function=mean_fn)
-    likelihood = Gaussian(num_datapoints=dataset.n, obs_stddev=obs_stddev)
-    posterior = prior * likelihood
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    expected_best_obs = jnp.max(posterior(dataset.X, dataset).mean)
+    likelihood = Gaussian(obs_stddev=obs_stddev)
+    posterior = (prior * likelihood).condition(dataset)
+    model = GPJaxConjugateGP(posterior=posterior)
+    expected_best_obs = jnp.max(posterior(dataset.X).mean)
     actual_best_obs = get_best_latent_observation_val(model)  # [S, 1] == [1, 1]
     assert jnp.equal(expected_best_obs, actual_best_obs.squeeze())

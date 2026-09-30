@@ -12,15 +12,15 @@ from jaxtyping import TypeCheckError
 
 
 @pytest.mark.filterwarnings("ignore:y is not of type float64")
-def test_non_conjugate_posterior_raises_error():
+def test_non_conjugate_model_raises_error():
     key = jr.key(42)
     test_function = PoissonTestFunction()
     dataset = test_function.generate_dataset(num_points=10, key=key)
     kernel = RBF(lengthscale=jnp.ones(dataset.X.shape[1]))
     prior = Prior(kernel=kernel, mean_function=Zero())
-    posterior = prior * Poisson(num_datapoints=dataset.n)
+    posterior = (prior * Poisson()).condition(dataset)
     with pytest.raises(
         (BeartypeCallHintParamViolation, TypeCheckError, ValueError),
-        match="ConjugatePosterior",
+        match="ExactPosterior",
     ):
-        GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+        GPJaxConjugateGP(posterior=posterior)

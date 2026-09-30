@@ -6,28 +6,34 @@ from decijax.models import (
     GPJaxConjugateGPBuilder,
 )
 from decijax.test_functions import NegativeForrester
+from gpjax.dataset import Dataset
 from gpjax.gps import (
-    ConjugatePosterior,
+    ExactPosterior,
     Prior,
 )
 from gpjax.kernels import Matern52
 from gpjax.likelihoods import Gaussian
 from gpjax.mean_functions import Constant
 from gpjax.objectives import conjugate_mll
-from gpjax.parameters import Real
+from gpjax.parameters import (
+    Real,
+    val,
+)
 
-
-def gaussian_likelihood_builder(num_datapoints: int) -> Gaussian:
-    return Gaussian(num_datapoints=num_datapoints)
+INITIAL_LENGTHSCALE = jnp.array([0.5])
+INITIAL_SIGNAL_VAR = jnp.array(1.0)
+INITIAL_MEAN = jnp.array([1.0])
 
 
 def _make_builder(max_num_optimization_iters=10, **kwargs) -> GPJaxConjugateGPBuilder:
-    mean_function = Constant(constant=Real(value=jnp.array([1.0])))
-    kernel = Matern52(lengthscale=jnp.array([0.5]), variance=jnp.array(1.0), n_dims=1)
+    mean_function = Constant(constant=Real(value=INITIAL_MEAN))
+    kernel = Matern52(
+        lengthscale=INITIAL_LENGTHSCALE, variance=INITIAL_SIGNAL_VAR, n_dims=1
+    )
     prior = Prior(mean_function=mean_function, kernel=kernel)
     return GPJaxConjugateGPBuilder(
         prior=prior,
-        likelihood_builder=gaussian_likelihood_builder,
+        likelihood=Gaussian(),
         optimization_objective=conjugate_mll,
         max_num_optimization_iters=max_num_optimization_iters,
         **kwargs,
@@ -49,21 +55,21 @@ def test_build_produces_fitted_conjugate_model(num_datapoints: int):
     builder = _make_builder(observation_transform=lambda y: y)
     test_function = NegativeForrester()
     dataset = test_function.generate_dataset(num_points=num_datapoints, key=jr.key(42))
-    non_optimized_posterior = builder.prior * gaussian_likelihood_builder(
-        num_datapoints
-    )
+    non_optimized_posterior = builder.prior * Gaussian()
 
     model = builder.build(dataset, key=jr.key(42))
 
     assert isinstance(model, GPJaxConjugateGP)
-    assert isinstance(model.posterior, ConjugatePosterior)
-    assert model.posterior.likelihood.num_datapoints == num_datapoints
-    # Hyperparameters moved away from their initial values
-    assert model.posterior.prior.kernel.lengthscale != jnp.array([0.5])
-    assert model.posterior.prior.kernel.variance != jnp.array(1.0)
-    assert model.posterior.prior.mean_function.constant != jnp.array([1.0])
+    assert isinstance(model.posterior, ExactPosterior)
+    # Hyperparameters moved away from their initial values. Fitted parameters are
+    # still wrapped (e.g. `PositiveReal`), so unwrap them before comparing to arrays.
+    prior = model.posterior.prior
+    assert val(prior.kernel.lengthscale) != INITIAL_LENGTHSCALE
+    assert val(prior.kernel.variance) != INITIAL_SIGNAL_VAR
+    assert val(prior.mean_function.constant) != INITIAL_MEAN
     # Optimization increases the marginal log-likelihood
-    assert conjugate_mll(model.posterior, dataset) > conjugate_mll(
+    optimized_model = model.posterior.prior * model.posterior.likelihood
+    assert conjugate_mll(optimized_model, dataset) > conjugate_mll(
         non_optimized_posterior, dataset
     )
 
@@ -72,6 +78,9 @@ def test_build_standardizes_observations_by_default():
     builder = _make_builder()
     test_function = NegativeForrester()
     dataset = test_function.generate_dataset(num_points=50, key=jr.key(42))
+    # NegativeForrester is already roughly standardised, so shift and scale it to make
+    # the raw data unambiguously unstandardised.
+    dataset = Dataset(X=dataset.X, y=10.0 * dataset.y + 5.0)
 
     model = builder.build(dataset, key=jr.key(42))
 
@@ -86,6 +95,9 @@ def test_build_with_identity_transform_leaves_observations_unchanged():
     builder = _make_builder(observation_transform=lambda y: y)
     test_function = NegativeForrester()
     dataset = test_function.generate_dataset(num_points=20, key=jr.key(42))
+    # NegativeForrester is already roughly standardised, so shift and scale it to make
+    # the raw data unambiguously unstandardised.
+    dataset = Dataset(X=dataset.X, y=10.0 * dataset.y + 5.0)
 
     model = builder.build(dataset, key=jr.key(42))
 

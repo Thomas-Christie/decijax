@@ -13,7 +13,7 @@ from decijax.test_functions import NegativeQuadratic
 from decijax.typing import KeyArray
 from gpjax.dataset import Dataset
 from gpjax.gps import (
-    ConjugatePosterior,
+    ExactPosterior,
     Prior,
 )
 from gpjax.kernels import RBF
@@ -68,14 +68,14 @@ class CapabilitylessModel(ProbabilisticModel):
 def generate_dummy_conjugate_posterior(
     dataset: Dataset,
     mean_function: Optional[AbstractMeanFunction] = None,
-) -> ConjugatePosterior:
+) -> ExactPosterior:
     kernel = RBF(lengthscale=jnp.ones(dataset.X.shape[1]))
     if mean_function is None:
         mean_function = Zero()
     prior = Prior(kernel=kernel, mean_function=mean_function)
-    likelihood = Gaussian(num_datapoints=dataset.n, obs_stddev=1e-6)
-    posterior = prior * likelihood
-    return posterior
+    likelihood = Gaussian(obs_stddev=1e-6)
+    model = prior * likelihood
+    return model.condition(dataset)
 
 
 def generate_dummy_conjugate_model(
@@ -83,8 +83,6 @@ def generate_dummy_conjugate_model(
     mean_function: Optional[AbstractMeanFunction] = None,
     num_features: int = 100,
 ) -> GPJaxConjugateGP:
-    """Wrap a dummy conjugate GPJax posterior + dataset as a `GPJaxConjugateGP`."""
+    """Wrap a dummy conjugate GPJax posterior as a `GPJaxConjugateGP`."""
     posterior = generate_dummy_conjugate_posterior(dataset, mean_function)
-    return GPJaxConjugateGP(
-        posterior=posterior, dataset=dataset, num_features=num_features
-    )
+    return GPJaxConjugateGP(posterior=posterior, num_features=num_features)

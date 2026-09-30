@@ -11,7 +11,6 @@ from decijax.models.base import (
 from decijax.models.builder import (
     AbstractModelBuilder,
     GPJaxConjugateGPBuilder,
-    LikelihoodBuilder,
     ObservationTransform,
     standardize_observations,
 )
@@ -31,7 +30,6 @@ __all__ = [
     "GaussianDistribution",
     "GPJaxConjugateGP",
     "GPJaxConjugateGPBuilder",
-    "LikelihoodBuilder",
     "ObservationTransform",
     "ProbabilisticModel",
     "SamplePath",

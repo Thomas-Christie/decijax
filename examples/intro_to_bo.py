@@ -20,6 +20,7 @@
 # In this guide we introduce the Bayesian Optimisation (BO) paradigm for
 # optimising black-box functions. We'll assume an understanding of Gaussian processes
 # (GPs), so if you're not familiar with them, the [GP introduction notebook](https://docs.jaxgaussianprocesses.com/_examples/intro_to_gps/) in GPJax is a great place to start.
+#
 
 # %%
 # %load_ext jaxtyping
@@ -92,49 +93,51 @@ cols = mpl.rcParams["axes.prop_cycle"].by_key()["color"]
 # don't have the explicit functional form, but which we can (expensively) query at any
 # point in its domain. Bayesian optimisation provides a principled framework for solving
 # such problems.
+#
 
 # %% [markdown]
 # ## What is Bayesian Optimisation?
 #
 # Bayesian optimisation (BO) ([Močkus, 1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55)) provides a principled
 # method for making decisions under uncertainty. The aim of BO is to find the global
-# maximum of a *black-box* objective function, $\max_{\mathbf{x} \in \mathcal{X}}
-# f(\mathbf{x})$. The function $f$ is said to be a *black-box* function because its
+# maximum of a _black-box_ objective function, $\max_{\mathbf{x} \in \mathcal{X}}
+# f(\mathbf{x})$. The function $f$ is said to be a _black-box_ function because its
 # explicit functional form is unknown. However, it is assumed that one is able to
 # ascertain information about the function by evaluating it at points in its domain,
-# $X$. However, these evaluations are assumed to be *expensive*, as seen in the
+# $X$. However, these evaluations are assumed to be _expensive_, as seen in the
 # motivating examples. Therefore, the goal of BO is to maximise $f$ with as few
 # evaluations of the black-box function as possible.
 #
-# As such, BO can be thought of as *sequential decision-making* problem. At each iteration
-# one must choose which point (or batch of points) in a function's domain to evaluate
+# As such, BO can be thought of as a _sequential decision-making_ problem. At each iteration one must choose which point (or batch of points) in a function's domain to evaluate
 # next, drawing on previously observed values to make optimal decisions. In order to do
 # this effectively, we need a way of representing our uncertainty about the black-box
 # function $f$, which we can update in light of observing more data. Gaussian processes
 # will be an ideal tool for this purpose!
 #
-# *Surrogate models* lie at the heart of BO, and are used to model the black-box
+# _Surrogate models_ lie at the heart of BO, and are used to model the black-box
 # function. GPs are a natural (though by no means the only) choice for this model, as they not only provide point
 # estimates for the values taken by the function throughout its domain, but crucially
-# provide a full predictive posterior *distribution* of the range of values the function
-# may take. This rich quantification of uncertainty enables BO to balance *exploration*
-# and *exploitation* in order to efficiently converge upon minima.
+# provide a full predictive posterior _distribution_ of the range of values the function
+# may take. This rich quantification of uncertainty enables BO to balance _exploration_
+# and _exploitation_ in order to efficiently converge upon minima.
 #
 # Having chosen a surrogate model which we can use to express our current beliefs about
 # the black-box function, ideally we would like a method which can use the surrogate
 # model's posterior distribution to automatically decide which point(s) in the black-box
-# function's domain to query next. This is where *acquisition functions* come in. The
-# acquisition function $\alpha: \mathcal{X} \to \mathbb{R}$ is defined over the same domain as the surrogate model, and typically uses the surrogate model's posterior distribution to quantify the *expected utility* of evaluating the black-box function at a given point, with the expectation taking place with respect to the model's posterior. Simply put, for each point in the black-box function's domain, $\mathbf{x} \in \mathcal{X}$, the acquisition function quantifies how useful it would be to evaluate the black-box function at $\mathbf{x}$ in order to find the maximum of the black-box function, given the datapoints observed so far. Therefore, in order to
+# function's domain to query next. This is where _acquisition functions_ come in. The
+# acquisition function $\alpha: \mathcal{X} \to \mathbb{R}$ is defined over the same domain as the surrogate model, and typically uses the surrogate model's posterior distribution to quantify the _expected utility_ of evaluating the black-box function at a given point, with the expectation taking place with respect to the model's posterior. Simply put, for each point in the black-box function's domain, $\mathbf{x} \in \mathcal{X}$, the acquisition function quantifies how useful it would be to evaluate the black-box function at $\mathbf{x}$ in order to find the maximum of the black-box function, given the datapoints observed so far. Therefore, in order to
 # decide which point to query next we simply choose the point which maximises the
-# acquisition function, using an optimiser which depends on the domain. In this notebook we'll be operating on the *Euclidean* domain, $\mathbb{R}^D$, and so a suitable optimiser is L-BFGS ([Liu and Nocedal, 1989](https://link.springer.com/article/10.1007/BF01589116)).
+# acquisition function, using an optimiser which depends on the domain. In this notebook we'll be operating on the _Euclidean_ domain, $\mathbb{R}^D$, and so a suitable optimiser is L-BFGS ([Liu and Nocedal, 1989](https://link.springer.com/article/10.1007/BF01589116)).
 #
 # The Bayesian optimisation loop can be summarised as follows, with $i$ denoting the
 # current iteration:
 #
 # 1. Select the next point to query, $\mathbf{x}_{i}$, by maximising the acquisition function $\alpha$, defined using the surrogate model $\mathcal{M}_i$ conditioned on previously observed data $\mathcal{D}_i$:
 #
-# $$\mathbf{x}_{i} = \arg\max_{\mathbf{x} \in \mathcal{X}} \alpha (\mathbf{x}; \mathcal{D}_i,
-# \mathcal{M}_i)$$
+# $$
+# \mathbf{x}_{i} = \arg\max_{\mathbf{x} \in \mathcal{X}} \alpha (\mathbf{x}; \mathcal{D}_i,
+# \mathcal{M}_i)
+# $$
 #
 # 2. Evaluate the objective function at $\mathbf{x}_i$, yielding observation $y_i =
 #    f(\mathbf{x}_i)$.
@@ -151,11 +154,13 @@ cols = mpl.rcParams["axes.prop_cycle"].by_key()["color"]
 # advantages and disadvantages, of which ([Shahriari et al., 2015](https://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf))
 # provides an excellent overview.
 #
-# In this guide we will focus on *Expected Improvement (EI)*, a conceptually simple yet effective method for characterising the utility of querying points in a black-box function's domain, which will be useful in demonstrating the key aspects of BO.
+# In this guide we will focus on _Expected Improvement (EI)_, a conceptually simple yet effective method for characterising the utility of querying points in a black-box function's domain, which will be useful in demonstrating the key aspects of BO.
+#
 
 # %% [markdown]
 # ## Expected Improvement
-# Expected Improvement ([Močkus, 1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55)) is a simple method which naturally balances exploration and exploitation. With this method, the *utility* of observing a point $f$, given current best observation $f^*$, is simply defined as the amount by which $f$ improves over $f^*$ if it is better, and $0$ otherwise. Mathematically, the utility $u(f;f^*) = \text{ReLU}(f - f^*)$. Expected improvement is then defined as the *expectation* of this utility with respect to the model's posterior over $f$ throughout the domain. For Gaussian predictives, this integral is analytically tractable, yielding the following acquisition function:
+#
+# Expected Improvement ([Močkus, 1974](https://link.springer.com/chapter/10.1007/3-540-07165-2_55)) is a simple method which naturally balances exploration and exploitation. With this method, the _utility_ of observing a point $f$, given current best observation $f^*$, is simply defined as the amount by which $f$ improves over $f^*$ if it is better, and $0$ otherwise. Mathematically, the utility $u(f;f^*) = \text{ReLU}(f - f^*)$. Expected improvement is then defined as the _expectation_ of this utility with respect to the model's posterior over $f$ throughout the domain. For Gaussian predictives, this integral is analytically tractable, yielding the following acquisition function:
 #
 # $$
 #   \begin{aligned}
@@ -166,10 +171,10 @@ cols = mpl.rcParams["axes.prop_cycle"].by_key()["color"]
 #   areas with high mean} \\
 #   &+  \underbrace{\sigma_{\mathcal{M}_i}(\mathbf{x}) \phi \left(\frac{\mu_{\mathcal{M}_i}(\mathbf{x}) - f^*}{\sigma_{\mathcal{M}_i}(\mathbf{x})}\right)}_\text{explores areas with high variance} \nonumber
 #   \end{aligned}
-#   $$
+# $$
 #
-#   with $\Phi(\cdot)$ denoting the standard normal cumulative distribution function and $\phi(\cdot)$ being the
-#   standard normal probability density function.
+# with $\Phi(\cdot)$ denoting the standard normal cumulative distribution function and $\phi(\cdot)$ being the
+# standard normal probability density function.
 #
 # ## Objective Function
 #
@@ -178,11 +183,13 @@ cols = mpl.rcParams["axes.prop_cycle"].by_key()["color"]
 #
 # $$f(x) = (6x - 2)^2 \sin(12x - 4)$$
 #
-# treating $f$ as a black-box function. Note that we'll be *minimising* this function, but the BO component of `decijax` has been written to *maximise* the function, so we'll maximise the negative of the Forrester function.  The global minimum of this (standardised) function is located at $x = 0.757$, where $f(x) = -1.463$.
+# treating $f$ as a black-box function. Note that we'll be _minimising_ this function, but the BO component of `decijax` has been written to _maximise_ the function, so we'll maximise the negative of the Forrester function. The global minimum of this (standardised) function is located at $x = 0.757$, where $f(x) = -1.463$.
 #
 # We also note a few other common tricks:
-# - We *standardise* the output of the function, such that it has a mean of 0 and standard deviation of 1. This is quite common practice when using GPs; we're using a zero mean prior, so ensuring that our data has a mean of zero aligns with this, and often we have scale parameters in the covariance function, which are frequently initialised, or have priors set on them, under the assumption that the function being modelled has unit variance.
+#
+# - We _standardise_ the output of the function, such that it has a mean of 0 and standard deviation of 1. This is quite common practice when using GPs; we're using a zero mean prior, so ensuring that our data has a mean of zero aligns with this, and often we have scale parameters in the covariance function, which are frequently initialised, or have priors set on them, under the assumption that the function being modelled has unit variance.
 # - Covariance functions often have hyperpriors which have been set based on the assumption that the domain of the problem of interest is the unit hypercube (see [Hvarfner et al. 2024](https://arxiv.org/pdf/2402.02229) for a good example).
+#
 
 
 # %%
@@ -207,10 +214,12 @@ plt.show()
 # %% [markdown]
 # We'll first go through one iteration of the BO loop step-by-step, before wrapping this
 # up in a loop to perform the full optimisation. We'll be combining components from the `decijax` library in order to do this. Note that `decijax` provides functionality for running the entire BO loop end-to-end without stitching the components together manually (via its `DecisionMaker`). In this notebook we expose the individual components for educational purposes.
+#
 
 # %% [markdown]
 # First we'll specify the domain over which we wish to optimise the function, as well as
 # sampling some initial points for fitting our surrogate model using a space-filling design. We do this using the `SearchSpace` abstraction from `decijax`:
+#
 
 # %%
 lower_bound = jnp.array([0.0])
@@ -226,6 +235,7 @@ dataset = gpx.Dataset(X=initial_x, y=initial_y)
 
 # %% [markdown]
 # Next we'll define our GP model, using a Matérn52 kernel and zero mean function, and fit the kernel parameters by minimising the negative log-marginal likelihood. We'll use the `GPJaxConjugateGPBuilder` for this, which builds and trains a GP when the `build()` method is called with a dataset.
+#
 
 
 # %%
@@ -234,20 +244,19 @@ kernel = gpx.kernels.Matern52()
 prior = gpx.gps.Prior(mean_function=mean, kernel=kernel)
 
 
-def likelihood_builder(n: int) -> gpx.likelihoods.Gaussian:
-    # Our function is noise-free, so we fix the observation noise's standard
-    # deviation at a very small value rather than treating it as trainable.
-    likelihood = gpx.likelihoods.Gaussian(num_datapoints=n, obs_stddev=1e-6)
-    return eqx.tree_at(
-        lambda l: l.obs_stddev,  # noqa: E741
-        likelihood,
-        replace_fn=paramax.non_trainable,
-    )
+# Our function is noise-free, so we fix the observation noise's standard
+# deviation at a very small value rather than treating it as trainable.
+likelihood = gpx.likelihoods.Gaussian(obs_stddev=1e-6)
+likelihood = eqx.tree_at(
+    lambda l: l.obs_stddev,  # noqa: E741
+    likelihood,
+    replace_fn=paramax.non_trainable,
+)
 
 
 gp_builder = GPJaxConjugateGPBuilder(
     prior=prior,
-    likelihood_builder=likelihood_builder,
+    likelihood=likelihood,
     optimization_objective=gpx.objectives.conjugate_mll,
     observation_transform=lambda x: x,
 )
@@ -255,7 +264,8 @@ key, subkey = jr.split(key)
 opt_posterior = gp_builder.build(dataset, subkey)
 
 # %% [markdown]
-# Next we'll set up our acquisition function, using the pre-implemented `ExpectedImprovement` acquisition function from the `acquisition_functions` subpackage of `decijax`. The primary method of acquisition functions is `build_acquisition_function`, which takes a dictionary of models (keyed by their role - in this case just `OBJECTIVE`), and returns a *function* mapping any batch of query points [N, D] to their acquisition values [N, 1]. Because it returns a pure function, this can be easily composed with JAX transforms such as `jax.grad` or `jax.jit`, facilitating the use of gradient-based optimisers such as L-BFGS.
+# Next we'll set up our acquisition function, using the pre-implemented `ExpectedImprovement` acquisition function from the `acquisition_functions` subpackage of `decijax`. The primary method of acquisition functions is `build_acquisition_function`, which takes a single model (here, our fitted GP) and a PRNG key, and returns a _function_ mapping any batch of query points [N, D] to their acquisition values [N, 1]. Because it returns a pure function, this can be easily composed with JAX transforms such as `jax.grad` or `jax.jit`, facilitating the use of gradient-based optimisers such as L-BFGS.
+#
 
 # %%
 ei = ExpectedImprovement()
@@ -268,6 +278,7 @@ ei = ExpectedImprovement()
 # acquisition function at a number of points proportional to the dimensionality of the input space, and one may run gradient-based optimisation from multiple of these points, to reduce the impact of converging upon local minima.
 #
 # We'll use the `ContinuousSinglePointAcquisitionMaximizer` from `decijax` in order to do this, which implements the functionality above. We specify `num_initial_samples=100`, to sample the acquisition function randomly at 100 points, and `num_optimization_runs=1`, signifying that the gradient-based optimiser will be run from the best of these points.
+#
 
 # %%
 acq_maximizer = ContinuousSinglePointAcquisitionMaximizer(
@@ -281,6 +292,7 @@ acq_maximizer = ContinuousSinglePointAcquisitionMaximizer(
 # sharing an x axis so that the acquisition function's peak lines up with the posterior,
 # and marks the next point to query in both panels. We'll reuse it on every iteration of
 # the BO loop further down.
+#
 
 
 # %%
@@ -362,6 +374,7 @@ plot_bo_step(opt_posterior, dataset, next_query, acquisition_function)
 # %% [markdown]
 # Having found the minimum of the sample from the posterior, we can then evaluate the
 # black-box objective function at this point, append the new observation to our dataset, and update our model with the newly augmented dataset, repeating the whole process until some stopping criterion is met. Below we repeat this process for 5 iterations, plotting the progress at each iteration.
+#
 
 
 # %%
@@ -389,6 +402,7 @@ for _ in range(bo_iters):
 #
 # We can see that the BO algorithm quickly converges to the global minimum of the
 # black-box function!
+#
 
 # %%
 fig, ax = plt.subplots()
@@ -405,6 +419,7 @@ plt.show()
 
 # %% [markdown]
 # ### A More Challenging Example - The Six-Hump Camel Function
+#
 
 # %% [markdown]
 # We'll now apply BO to a more challenging example, the [Six-Hump Camel
@@ -417,7 +432,8 @@ plt.show()
 # shall standardise it. The
 # global minima of this function are located at $\mathbf{x} = (0.0898, -0.7126)$ and
 # $\mathbf{x} = (-0.0898, 0.7126)$, where the standardised function takes the value $f(\mathbf{x}) =
-# -1.8377$. Note that we once again try to maximise the *negative* of this function, due to the maximisation convention of `decijax`, though plots show the original function.
+# -1.8377$. Note that we once again try to maximise the _negative_ of this function, due to the maximisation convention of `decijax`, though plots show the original function.
+#
 
 
 # %%
@@ -434,6 +450,7 @@ def neg_standardised_six_hump_camel(x: Float[Array, "N 2"]) -> Float[Array, "N 1
 
 # %% [markdown]
 # First, we'll visualise the function over the domain of interest:
+#
 
 # %%
 x1 = jnp.linspace(-2, 2, 100)
@@ -458,6 +475,7 @@ plt.show()
 # %% [markdown]
 # For more clarity, we can generate a contour plot of the function which enables us to see
 # the global minima of the function more clearly.
+#
 
 # %%
 x_star_one = jnp.array([[0.0898, -0.7126]])
@@ -478,6 +496,7 @@ plt.show()
 
 # %% [markdown]
 # Next, we'll run the BO loop using Expected Improvement as before. This time we'll run the experiment 5 times in order to see how the algorithm performs on average, with different starting points for the initial GP model. This is good practice, as the performance obtained is likely to vary between runs depending on the initialisation samples used to fit the initial GP model.
+#
 
 # %%
 lower_bound = jnp.array([-2.0, -1.0])
@@ -492,7 +511,7 @@ camel_prior = gpx.gps.Prior(
 )
 camel_gp_builder = GPJaxConjugateGPBuilder(
     prior=camel_prior,
-    likelihood_builder=likelihood_builder,
+    likelihood=likelihood,
     optimization_objective=gpx.objectives.conjugate_mll,
     observation_transform=lambda x: x,
 )
@@ -540,8 +559,8 @@ for experiment in range(num_experiments):
 
 
 # %% [markdown]
-# We'll also run a random benchmark, whereby we randomly sample from the search space for
-# 17 iterations. This is a useful benchmark to compare the performance of BO against in
+# We'll also run a random baseline, whereby we randomly sample from the search space for
+# 17 iterations. This is a useful baseline to compare the performance of BO against in
 # order to ascertain how much of an advantage BO provides over such a simple approach.
 #
 
@@ -573,6 +592,7 @@ for i in range(num_experiments):
 #
 # We'll then take the mean and standard deviation of the simple regret values across
 # the 5 experiments.
+#
 
 
 # %%
@@ -604,6 +624,7 @@ bo_regret_mean, bo_regret_std = obtain_regret_statistics(bo_experiment_results, 
 # %% [markdown]
 # Now, when we plot the mean and standard deviation of the regret at each iteration,
 # we can see that BO outperforms random sampling!
+#
 
 # %%
 fig, ax = plt.subplots()
@@ -634,6 +655,7 @@ plt.show()
 # we do this for one of the BO experiments, and can see that the algorithm initially
 # performs some exploration of the search space whilst it is uncertain about the black-box
 # function, but it then hones in on the global minima of the function, as we would hope!
+#
 
 # %%
 fig, ax = plt.subplots()
@@ -679,6 +701,7 @@ plt.show()
 # exotic BO problems, such as problems which also feature unknown constraints.
 #
 # ## System Configuration
+#
 
 # %%
 # %reload_ext watermark

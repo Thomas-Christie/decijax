@@ -7,7 +7,6 @@ from decijax.acquisition_functions.probability_of_improvement import (
     LogProbabilityOfImprovement,
     ProbabilityOfImprovement,
 )
-from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -16,7 +15,7 @@ from decijax.test_functions.continuous_functions import (
 from decijax.typing import KeyArray
 from decijax.utils import get_best_latent_observation_val
 
-from tests.utils import generate_dummy_conjugate_posterior
+from tests.utils import generate_dummy_conjugate_model
 
 
 @pytest.mark.parametrize(
@@ -30,8 +29,7 @@ def test_probability_of_improvement_gives_correct_value_against_erf(
 ):
     data_key, acq_key, test_key = jr.split(key, 3)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
 
     pi_acquisition_builder = ProbabilityOfImprovement()
     pi_acquisition = pi_acquisition_builder.build_acquisition_function(model, acq_key)
@@ -40,13 +38,13 @@ def test_probability_of_improvement_gives_correct_value_against_erf(
     acquisition_values = pi_acquisition(test_X)
 
     # Computing the expected acquisition values
-    predictive_dist = posterior(test_X, train_data=dataset)
-    predictive_mean = predictive_dist.mean
-    predictive_std = predictive_dist.stddev()
+    predictive_dist = model.predict(test_X)
+    predictive_mean = predictive_dist.mean.squeeze(0)
+    predictive_std = predictive_dist.stddev.squeeze(0)
 
     # Computing best_y as the max. of the posterior predictive mean
     # over the training set.
-    predictive_dist_for_training_data = posterior(dataset.X, train_data=dataset)
+    predictive_dist_for_training_data = model.predict(dataset.X)
     best_y = predictive_dist_for_training_data.mean.max()
 
     # 1 - Gaussian CDF computed "by hand"
@@ -71,14 +69,13 @@ def test_probability_of_improvement_acquisition_function_correct_values(
     # Test validity of computed values with Monte-Carlo.
     data_key, acq_key, test_key, mc_key = jr.split(key, 4)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     pi_fn = ProbabilityOfImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     pi = pi_fn(test_x)
-    latent_dist = posterior.predict(test_x, dataset)
-    latent_mean = latent_dist.mean
-    latent_var = latent_dist.variance
+    latent_dist = model.predict(test_x)
+    latent_mean = latent_dist.mean.squeeze(0)
+    latent_var = latent_dist.variance.squeeze(0)
     samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
         mc_key, sample_shape=(10000,)
     )
@@ -102,8 +99,7 @@ def test_log_probability_of_improvement_acquisition_function_correct_values(
     # both the analytic PI and its Monte-Carlo estimate.
     data_key, pi_acq_key, log_pi_acq_key, test_key, mc_key = jr.split(key, 5)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     pi_fn = ProbabilityOfImprovement().build_acquisition_function(model, pi_acq_key)
     log_pi_fn = LogProbabilityOfImprovement().build_acquisition_function(
         model, log_pi_acq_key
@@ -111,9 +107,9 @@ def test_log_probability_of_improvement_acquisition_function_correct_values(
     test_x = test_target_function.generate_test_points(100, test_key)
     pi = pi_fn(test_x)
     log_pi = log_pi_fn(test_x)
-    latent_dist = posterior.predict(test_x, dataset)
-    latent_mean = latent_dist.mean
-    latent_var = latent_dist.variance
+    latent_dist = model.predict(test_x)
+    latent_mean = latent_dist.mean.squeeze(0)
+    latent_var = latent_dist.variance.squeeze(0)
     samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
         mc_key, sample_shape=(10000,)
     )

@@ -26,10 +26,15 @@ from decijax.utils import (
     build_function_evaluator,
 )
 from gpjax.dataset import Dataset
+from gpjax.likelihoods import Gaussian
+from gpjax.parameters import val
 
 from tests.utils import QuadraticSinglePointAcquisitionFunctionBuilder
 
 CONSTRAINT = "CONSTRAINT"
+INITIAL_LENGTHSCALE = jnp.array([0.5])
+INITIAL_SIGNAL_VAR = jnp.array(1.0)
+INITIAL_NOISE_STD = jnp.array(1e-3)
 
 
 @pytest.fixture
@@ -44,17 +49,15 @@ def search_space() -> ContinuousSearchSpace:
 def model_builder() -> GPJaxConjugateGPBuilder:
     mean = gpx.mean_functions.Zero()
     kernel = gpx.kernels.Matern52(
-        lengthscale=jnp.array(1.0),
-        variance=jnp.array(1.0),
+        lengthscale=INITIAL_LENGTHSCALE,
+        variance=INITIAL_SIGNAL_VAR,
         n_dims=1,
     )
     prior = gpx.gps.Prior(mean_function=mean, kernel=kernel)
-    likelihood_builder = lambda x: gpx.likelihoods.Gaussian(
-        num_datapoints=x, obs_stddev=jnp.array(1e-3)
-    )
+    likelihood = Gaussian(obs_stddev=INITIAL_NOISE_STD)
     return GPJaxConjugateGPBuilder(
         prior=prior,
-        likelihood_builder=likelihood_builder,
+        likelihood=likelihood,
         optimization_objective=gpx.objectives.conjugate_mll,
         max_num_optimization_iters=100,
     )
@@ -210,13 +213,18 @@ def test_initialisation_optimizes_model_hyperparameters(
     )
     objective_prior = decision_maker.models[OBJECTIVE].posterior.prior
     constraint_prior = decision_maker.models[CONSTRAINT].posterior.prior
-    # Assert kernel hyperparameters get changed from their initial values
-    assert objective_prior.kernel.lengthscale != jnp.array(1.0)
-    assert objective_prior.kernel.variance != jnp.array(1.0)
-    assert constraint_prior.kernel.lengthscale != jnp.array(1.0)
-    assert constraint_prior.kernel.variance != jnp.array(1.0)
-    assert constraint_prior.kernel.lengthscale != objective_prior.kernel.lengthscale
-    assert constraint_prior.kernel.variance != objective_prior.kernel.variance
+    # Assert kernel hyperparameters get changed from their initial values. Fitted
+    # parameters are still wrapped (e.g. `PositiveReal`), so unwrap them first.
+    objective_lengthscale = val(objective_prior.kernel.lengthscale)
+    objective_variance = val(objective_prior.kernel.variance)
+    constraint_lengthscale = val(constraint_prior.kernel.lengthscale)
+    constraint_variance = val(constraint_prior.kernel.variance)
+    assert objective_lengthscale != INITIAL_LENGTHSCALE
+    assert objective_variance != INITIAL_SIGNAL_VAR
+    assert constraint_lengthscale != INITIAL_LENGTHSCALE
+    assert constraint_variance != INITIAL_SIGNAL_VAR
+    assert constraint_lengthscale != objective_lengthscale
+    assert constraint_variance != objective_variance
 
 
 def test_decision_maker_ask(

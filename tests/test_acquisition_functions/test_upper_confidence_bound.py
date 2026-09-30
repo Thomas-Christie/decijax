@@ -2,7 +2,6 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 from decijax.acquisition_functions.upper_confidence_bound import UpperConfidenceBound
-from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -10,7 +9,7 @@ from decijax.test_functions.continuous_functions import (
 )
 from decijax.typing import KeyArray
 
-from tests.utils import generate_dummy_conjugate_posterior
+from tests.utils import generate_dummy_conjugate_model
 
 
 @pytest.mark.parametrize("beta", [0.0, 4.0])
@@ -28,13 +27,14 @@ def test_upper_confidence_bound_matches_closed_form(
     # beta = 0 is included as the degenerate case: pure exploitation of the mean.
     data_key, acq_key, test_key = jr.split(key, 3)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     ucb_fn = UpperConfidenceBound(beta=beta).build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     ucb = ucb_fn(test_x)
-    latent_dist = posterior.predict(test_x, dataset)
-    expected = latent_dist.mean + jnp.sqrt(beta) * jnp.sqrt(latent_dist.variance)
+    latent_dist = model.predict(test_x)
+    expected = latent_dist.mean.squeeze(0) + jnp.sqrt(beta) * jnp.sqrt(
+        latent_dist.variance.squeeze(0)
+    )
 
     assert ucb.shape == (100, 1)
     assert jnp.all(jnp.equal(ucb, expected[:, None]))

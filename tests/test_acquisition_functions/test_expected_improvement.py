@@ -8,7 +8,6 @@ from decijax.acquisition_functions.expected_improvement import (
     LogExpectedImprovement,
     _log_ei_helper,
 )
-from decijax.models import GPJaxConjugateGP
 from decijax.test_functions.continuous_functions import (
     AbstractContinuousTestFunction,
     NegativeForrester,
@@ -17,7 +16,7 @@ from decijax.test_functions.continuous_functions import (
 from decijax.typing import KeyArray
 from decijax.utils import get_best_latent_observation_val
 
-from tests.utils import generate_dummy_conjugate_posterior
+from tests.utils import generate_dummy_conjugate_model
 
 
 @pytest.mark.parametrize(
@@ -32,14 +31,13 @@ def test_expected_improvement_acquisition_function_correct_values(
     # Test validity of computed values with Monte-Carlo
     data_key, acq_key, test_key, mc_key = jr.split(key, 4)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     ei_fn = ExpectedImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     ei = ei_fn(test_x)
-    latent_dist = posterior.predict(test_x, dataset)
-    latent_mean = latent_dist.mean
-    latent_var = latent_dist.variance
+    latent_dist = model.predict(test_x)
+    latent_mean = latent_dist.mean.squeeze(0)
+    latent_var = latent_dist.variance.squeeze(0)
     samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
         mc_key, sample_shape=(10000,)
     )
@@ -62,8 +60,7 @@ def test_log_expected_improvement_acquisition_function_correct_values(
     # the analytic EI and its Monte-Carlo estimate.
     data_key, ei_acq_key, log_ei_acq_key, test_key, mc_key = jr.split(key, 5)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     ei_fn = ExpectedImprovement().build_acquisition_function(model, ei_acq_key)
     log_ei_fn = LogExpectedImprovement().build_acquisition_function(
         model, log_ei_acq_key
@@ -71,9 +68,9 @@ def test_log_expected_improvement_acquisition_function_correct_values(
     test_x = test_target_function.generate_test_points(100, test_key)
     ei = ei_fn(test_x)
     log_ei = log_ei_fn(test_x)
-    latent_dist = posterior.predict(test_x, dataset)
-    latent_mean = latent_dist.mean
-    latent_var = latent_dist.variance
+    latent_dist = model.predict(test_x)
+    latent_mean = latent_dist.mean.squeeze(0)
+    latent_var = latent_dist.variance.squeeze(0)
     samples = dist.Normal(loc=latent_mean, scale=jnp.sqrt(latent_var)).sample(
         mc_key, sample_shape=(10000,)
     )
@@ -176,8 +173,7 @@ def test_log_expected_improvement_is_jit_and_grad_safe(
     key = jr.key(42)
     data_key, acq_key, test_key = jr.split(key, 3)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
+    model = generate_dummy_conjugate_model(dataset, test_target_function)
     log_ei_fn = LogExpectedImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(10, test_key)
 

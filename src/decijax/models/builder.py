@@ -13,12 +13,9 @@ from typing import TypeAlias
 
 import gpjax as gpx
 import jax.numpy as jnp
-import paramax
 from gpjax.dataset import Dataset
-from gpjax.gps import (
-    AbstractLikelihood,
-    AbstractPrior,
-)
+from gpjax.gps import Prior
+from gpjax.likelihoods import Gaussian
 from gpjax.objectives import Objective
 from jaxtyping import (
     Array,
@@ -28,11 +25,6 @@ from jaxtyping import (
 from decijax.models.base import ProbabilisticModel
 from decijax.models.gps import GPJaxConjugateGP
 from decijax.typing import KeyArray
-
-LikelihoodBuilder: TypeAlias = Callable[[int], AbstractLikelihood]
-"""Takes the number of datapoints and returns an initialised likelihood. Needed
-because GPJax likelihoods bake in ``num_datapoints`` at construction, so the
-likelihood must be rebuilt whenever the dataset grows."""
 
 ObservationTransform: TypeAlias = Callable[[Float[Array, "N 1"]], Float[Array, "N 1"]]
 """Maps observations (``y``) to the space the model is fit in. Operates on ``y``
@@ -78,8 +70,7 @@ class GPJaxConjugateGPBuilder(AbstractModelBuilder):
 
     Args:
         prior: GP prior.
-        likelihood_builder: Builds the likelihood for a given number of
-            datapoints (see `LikelihoodBuilder`).
+        likelihood: Gaussian likelihood.
         optimization_objective: Objective *maximised* when fitting
             hyperparameters (e.g. `conjugate_mll`). `gpx.fit_scipy` itself
             always minimises, so `build` negates this internally.
@@ -95,8 +86,8 @@ class GPJaxConjugateGPBuilder(AbstractModelBuilder):
         ValueError: If `max_num_optimization_iters` is less than 1.
     """
 
-    prior: AbstractPrior
-    likelihood_builder: LikelihoodBuilder
+    prior: Prior
+    likelihood: Gaussian
     optimization_objective: Objective
     max_num_optimization_iters: int = field(default=500)
     num_features: int = field(default=100)
@@ -123,29 +114,20 @@ class GPJaxConjugateGPBuilder(AbstractModelBuilder):
         """
         # X passes through untouched; only observations are transformed.
         fit_dataset = Dataset(X=dataset.X, y=self.observation_transform(dataset.y))
-        posterior = self.prior * self.likelihood_builder(fit_dataset.n)
+        model = self.prior * self.likelihood
         # gpx.fit_scipy minimises; negate so `optimization_objective` is maximised.
         negated_objective = lambda p, d: -self.optimization_objective(p, d)
-        opt_posterior, _ = gpx.fit_scipy(
-            model=posterior,
+        opt_model, _ = gpx.fit_scipy(
+            model=model,
             objective=negated_objective,
             train_data=fit_dataset,
             max_iters=self.max_num_optimization_iters,
             safe=True,
             verbose=False,
         )
-        # gpx.fit_scipy returns a model whose parameters are still wrapped
-        # (e.g. `NonNegativeReal`, or `NonTrainable` for frozen parameters).
-        # `posterior(...)`/`sample_approx(...)` don't recursively unwrap nested
-        # wrappers themselves, so a parameter frozen via `paramax.non_trainable`
-        # (e.g. a fixed observation noise) would otherwise break prediction.
-        # Unwrapping once here resolves every parameter to its plain value.
-        # TODO(Thomas-Christie): Come back to this
-        opt_posterior = paramax.unwrap(opt_posterior)
-        # The model carries the *transformed* dataset, so its predictions and its
+        # Condition on the *transformed* dataset, so the model's predictions and its
         # incumbent (best observed) are automatically consistent.
         return GPJaxConjugateGP(
-            posterior=opt_posterior,
-            dataset=fit_dataset,
+            posterior=opt_model.condition(fit_dataset),
             num_features=self.num_features,
         )

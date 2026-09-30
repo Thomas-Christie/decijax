@@ -11,7 +11,10 @@ from decijax.test_functions.continuous_functions import (
 )
 from decijax.typing import KeyArray
 
-from tests.utils import generate_dummy_conjugate_posterior
+from tests.utils import (
+    generate_dummy_conjugate_model,
+    generate_dummy_conjugate_posterior,
+)
 
 
 @pytest.mark.parametrize("num_rff_features", [0, -1, -10])
@@ -23,9 +26,7 @@ def test_invalid_rff_num_on_model_raises_error(num_rff_features: int):
     dataset = neg_forrester.generate_dataset(num_points=10, key=key)
     posterior = generate_dummy_conjugate_posterior(dataset)
     with pytest.raises(ValueError):
-        GPJaxConjugateGP(
-            posterior=posterior, dataset=dataset, num_features=num_rff_features
-        )
+        GPJaxConjugateGP(posterior=posterior, num_features=num_rff_features)
 
 
 @pytest.mark.parametrize(
@@ -44,8 +45,7 @@ def test_thompson_sampling_acquisition_function_same_key_same_function(
 ):
     data_key, sample_key, test_key = jr.split(key, 3)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
+    model = generate_dummy_conjugate_model(dataset)
     # Deliberately reusing `sample_key` here: drawing with the same key is what the
     # test asserts gives the same sample path.
     ts_acquisition_function_one = ThompsonSampling().build_acquisition_function(
@@ -80,8 +80,7 @@ def test_thompson_sampling_acquisition_function_different_key_different_function
 ):
     data_key, sample_one_key, sample_two_key, test_key = jr.split(key, 4)
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
-    posterior = generate_dummy_conjugate_posterior(dataset)
-    model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
+    model = generate_dummy_conjugate_model(dataset)
     ts_acquisition_builder = ThompsonSampling()
     ts_acquisition_function_one = ts_acquisition_builder.build_acquisition_function(
         model, sample_one_key

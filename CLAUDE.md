@@ -19,7 +19,7 @@ default GP surrogates, but the core is deliberately backend-agnostic.
     hand-written `__post_init__` `ValueError` can fire. Tests asserting on such
     validation need to accept both (see `tests/test_search_space.py`).
   - Hand-written guards that merely restate an annotation (e.g. the
-    `ConjugatePosterior` check in `models/gps.py`) are consequently not covered
+    `ExactPosterior` check in `models/gps.py`) are consequently not covered
     by the suite. Keep them anyway — they are what non-beartype users hit.
     Guards that check something the annotation does *not* (capability
     `isinstance` checks, positivity, tag consistency) remain fully covered.
@@ -93,7 +93,7 @@ abstractions:
   builder — never by widening acquisition signatures or branching on model
   type inside acquisitions.
 - New acquisitions state their model requirements by checking capability
-  interfaces, never concrete classes like `ConjugatePosterior`.
+  interfaces, never concrete classes like `ExactPosterior`.
 - Prefer plain `jax.scipy` / `jax.numpy` in acquisition math over pulling in
   distribution libraries.
 - Docstrings use the models/builders vocabulary ("model", "refit"), not the

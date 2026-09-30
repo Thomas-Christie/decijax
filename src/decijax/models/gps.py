@@ -3,8 +3,7 @@
 from dataclasses import dataclass
 
 import jax.numpy as jnp
-from gpjax.dataset import Dataset
-from gpjax.gps import ConjugatePosterior
+from gpjax.gps import ExactPosterior
 from jaxtyping import (
     Array,
     Float,
@@ -19,41 +18,39 @@ from decijax.models.distributions import GaussianDistribution
 from decijax.typing import KeyArray
 
 
-@dataclass
+@dataclass(frozen=True, eq=False)
 class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
-    """Adapter wrapping a GPJax `ConjugatePosterior` + its training data.
+    """Adapter wrapping a GPJax `ExactPosterior`.
 
-    The dataset is assumed to be in *prediction space*: if the posterior was fit
-    on standardised targets, pass the standardised dataset and the standardised
-    predictions / incumbent fall out consistently.
+    The posterior's training data is in *prediction space*: if the model was fit on
+    standardised targets, the posterior's dataset contains these standardised targets
+    and it will predict in this standardised space.
 
     Args:
-        posterior: The fitted GPJax posterior.
-        dataset: Training data in prediction space.
+        posterior: The fitted GPJax model conditioned on its training data.
         num_features: Number of random Fourier features used for pathwise
             (Thompson) sampling.
 
     Raises:
-        ValueError: If `posterior` is not a `ConjugatePosterior`, or if
-            `num_features` is not a positive integer.
+        ValueError: If `posterior` is not an `ExactPosterior`, or if `num_features`
+            is not a positive integer.
     """
 
-    posterior: ConjugatePosterior
-    dataset: Dataset
+    posterior: ExactPosterior
     num_features: int = 100
 
     def __post_init__(self):
-        """Validate that the posterior is conjugate and `num_features` is positive.
+        """Validate that the posterior is exact and `num_features` is positive.
 
         Raises:
-            ValueError: If `posterior` is not a `ConjugatePosterior`, or if
+            ValueError: If `posterior` is not an `ExactPosterior`, or if
                 `num_features` is not a positive integer.
         """
-        if not isinstance(self.posterior, ConjugatePosterior):
+        if not isinstance(self.posterior, ExactPosterior):
             raise ValueError(
-                "GPJaxConjugateGP requires a ConjugatePosterior (i.e. a Gaussian "
-                "likelihood). Non-conjugate posteriors are not currently supported, "
-                "as decijax acquisitions assume Gaussian predictive distributions."
+                "GPJaxConjugateGP requires an ExactPosterior (i.e. a ConjugateModel "
+                "conditioned on data). Non-conjugate models are not currently "
+                "supported."
             )
         if self.num_features <= 0:
             raise ValueError(
@@ -63,12 +60,12 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
     @property
     def training_inputs(self) -> Float[Array, "N D"]:
         """Inputs the model was conditioned on."""
-        return self.dataset.X
+        return self.posterior.train_data.X
 
     @property
     def observations(self) -> Float[Array, "N 1"]:
         """Observed targets, in prediction space."""
-        return self.dataset.y
+        return self.posterior.train_data.y
 
     def predict(self, x: Float[Array, "N D"]) -> GaussianDistribution:
         """Marginal Gaussian predictive at ``x``, over the latent function (noise-free).
@@ -77,10 +74,10 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
             x: Query points.
 
         Returns:
-            The marginal Gaussian distribution at each query point, with a
-            leading sample axis ``S == 1``.
+            The marginal Gaussian distribution at each query point, with a leading
+            sample axis ``S == 1``.
         """
-        latent = self.posterior(x, self.dataset)
+        latent = self.posterior(x, covariance="diagonal")
         # GPJax yields 1-D marginals; lift to the [S, N] contract with S == 1.
         mean = jnp.atleast_2d(latent.mean)
         variance = jnp.atleast_2d(latent.variance)
@@ -99,7 +96,6 @@ class GPJaxConjugateGP(SupportsGaussianPrediction, SupportsSamplePaths):
         """
         return self.posterior.sample_approx(
             num_samples=num_samples,
-            train_data=self.dataset,
             key=key,
             num_features=self.num_features,
         )
