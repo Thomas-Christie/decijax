@@ -1,7 +1,5 @@
 """Expected improvement acquisition functions."""
 
-from collections.abc import Mapping
-
 import jax.numpy as jnp
 from jax.nn import logmeanexp
 from jax.scipy.stats import norm
@@ -11,7 +9,7 @@ from jaxtyping import (
 )
 
 from decijax.acquisition_functions.base import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
 )
 from decijax.maths import (
@@ -23,10 +21,7 @@ from decijax.models import (
     SupportsGaussianPrediction,
 )
 from decijax.typing import KeyArray
-from decijax.utils import (
-    OBJECTIVE,
-    get_best_latent_observation_val,
-)
+from decijax.utils import get_best_latent_observation_val
 
 
 def _log_ei_helper(z: Float[Array, "..."]) -> Float[Array, "..."]:
@@ -88,7 +83,7 @@ def _log_ei_helper(z: Float[Array, "..."]) -> Float[Array, "..."]:
     )
 
 
-class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
+class ExpectedImprovement(AbstractSingleModelAcquisitionFunctionBuilder):
     """Standard Expected Improvement acquisition function.
 
     As introduced by
@@ -100,7 +95,7 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         r"""Build the Expected Improvement acquisition function.
@@ -120,10 +115,8 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         marginalisation $\mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]$.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support Gaussian
-                prediction, as we use the objective posterior to form the acquisition
-                function.
+            model: Model used to form the acquisition function, which must support
+                Gaussian prediction.
             key: JAX PRNG key used for random number generation. Since the expected
                 improvement is computed deterministically, the key is not used.
 
@@ -131,19 +124,16 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
             The Expected Improvement acquisition function to be *maximised* in order to
             decide which point to query next.
         """
-        self.check_objective_present(models)
-        objective_model = models[OBJECTIVE]
-
-        if not isinstance(objective_model, SupportsGaussianPrediction):
+        if not isinstance(model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective model must support Gaussian prediction to compute the "
+                "Model must support Gaussian prediction to compute the "
                 "Expected Improvement."
             )
 
-        eta = get_best_latent_observation_val(objective_model)  # [S, 1]
+        eta = get_best_latent_observation_val(model)  # [S, 1]
 
         def _expected_improvement(x: Float[Array, "N D"]) -> Float[Array, "N 1"]:
-            latent_dist = objective_model.predict(x)
+            latent_dist = model.predict(x)
             mean = latent_dist.mean  # [S, N]
             std = latent_dist.stddev  # [S, N]
             z = (mean - eta) / std
@@ -154,7 +144,7 @@ class ExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         return _expected_improvement
 
 
-class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
+class LogExpectedImprovement(AbstractSingleModelAcquisitionFunctionBuilder):
     r"""Numerically stable Log Expected Improvement acquisition function [1].
 
     Given a predictive posterior distribution of the objective function $f$, the log
@@ -180,7 +170,7 @@ class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         r"""Build the Log Expected Improvement acquisition function.
@@ -197,10 +187,8 @@ class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         $\log \mathbb{E}_\theta[\alpha_{\text{EI},\theta}(\mathbf{x})]$.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support Gaussian
-                prediction, as we use the objective posterior to form the acquisition
-                function.
+            model: Model used to form the acquisition function, which must support
+                Gaussian prediction.
             key: JAX PRNG key used for random number generation. Since the log
                 expected improvement is computed deterministically, the key is not
                 used.
@@ -209,19 +197,16 @@ class LogExpectedImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
             The Log Expected Improvement acquisition function to be *maximised* in
             order to decide which point to query next.
         """
-        self.check_objective_present(models)
-        objective_model = models[OBJECTIVE]
-
-        if not isinstance(objective_model, SupportsGaussianPrediction):
+        if not isinstance(model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective model must support Gaussian prediction to compute the "
+                "Model must support Gaussian prediction to compute the "
                 "Log Expected Improvement."
             )
 
-        eta = get_best_latent_observation_val(objective_model)  # [S, 1]
+        eta = get_best_latent_observation_val(model)  # [S, 1]
 
         def _log_expected_improvement(x: Float[Array, "N D"]) -> Float[Array, "N 1"]:
-            latent_dist = objective_model.predict(x)
+            latent_dist = model.predict(x)
             mean = latent_dist.mean  # [S, N]
             std = latent_dist.stddev  # [S, N]
             z = (mean - eta) / std

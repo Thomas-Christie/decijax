@@ -1,7 +1,5 @@
 """Probability of Improvement acquisition functions."""
 
-from collections.abc import Mapping
-
 import jax.numpy as jnp
 from jax.nn import logmeanexp
 from jax.scipy.special import log_ndtr
@@ -12,7 +10,7 @@ from jaxtyping import (
 )
 
 from decijax.acquisition_functions.base import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
 )
 from decijax.models import (
@@ -20,13 +18,10 @@ from decijax.models import (
     SupportsGaussianPrediction,
 )
 from decijax.typing import KeyArray
-from decijax.utils import (
-    OBJECTIVE,
-    get_best_latent_observation_val,
-)
+from decijax.utils import get_best_latent_observation_val
 
 
-class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
+class ProbabilityOfImprovement(AbstractSingleModelAcquisitionFunctionBuilder):
     r"""Standard Probability of Improvement acquisition function.
 
     Given a predictive posterior distribution of the objective function $f$, the
@@ -58,7 +53,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Probability of Imprvoement acquisition function.
@@ -67,9 +62,8 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         probability of improvement is computed per sample and averaged.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support Gaussian
-                prediction.
+            model: Model used to form the acquisition function, which must support
+                Gaussian prediction.
             key: JAX PRNG key used for random number generation. Since the probability
                 of improvement is computed deterministically from the predictive
                 posterior, the key is not used.
@@ -77,21 +71,18 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         Returns:
             The Probability of Improvement acquisition function.
         """
-        self.check_objective_present(models)
-        objective_model = models[OBJECTIVE]
-
-        if not isinstance(objective_model, SupportsGaussianPrediction):
+        if not isinstance(model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective model must support Gaussian prediction to compute the "
+                "Model must support Gaussian prediction to compute the "
                 "Probability of Improvement using a Gaussian CDF."
             )
 
-        best_y = get_best_latent_observation_val(objective_model)  # [S, 1]
+        best_y = get_best_latent_observation_val(model)  # [S, 1]
 
         def _probability_of_improvement(
             x: Float[Array, "N D"],
         ) -> Float[Array, "N 1"]:
-            predictive_dist = objective_model.predict(x)
+            predictive_dist = model.predict(x)
             mean = predictive_dist.mean  # [S, N]
             std = predictive_dist.stddev  # [S, N]
             pi = norm.cdf((mean - best_y) / std)  # [S, N]
@@ -100,7 +91,7 @@ class ProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
         return _probability_of_improvement
 
 
-class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder):
+class LogProbabilityOfImprovement(AbstractSingleModelAcquisitionFunctionBuilder):
     r"""Numerically stable Log Probability of Improvement acquisition function.
 
     Given a predictive posterior distribution of the objective function $f$, the
@@ -129,7 +120,7 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Log Probability of Improvement acquisition function.
@@ -138,9 +129,8 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
         log probability of improvement is computed per sample and averaged.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support Gaussian
-                prediction.
+            model: Model used to form the acquisition function, which must support
+                Gaussian prediction.
             key: JAX PRNG key used for random number generation. Since the log
                 probability of improvement is computed deterministically from the
                 predictive posterior, the key is not used.
@@ -148,21 +138,18 @@ class LogProbabilityOfImprovement(AbstractSinglePointAcquisitionFunctionBuilder)
         Returns:
             The Log Probability of Improvement acquisition function.
         """
-        self.check_objective_present(models)
-        objective_model = models[OBJECTIVE]
-
-        if not isinstance(objective_model, SupportsGaussianPrediction):
+        if not isinstance(model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective model must support Gaussian prediction to compute the "
+                "Model must support Gaussian prediction to compute the "
                 "Log Probability of Improvement using a Gaussian CDF."
             )
 
-        best_y = get_best_latent_observation_val(objective_model)  # [S, 1]
+        best_y = get_best_latent_observation_val(model)  # [S, 1]
 
         def _log_probability_of_improvement(
             x: Float[Array, "N D"],
         ) -> Float[Array, "N 1"]:
-            predictive_dist = objective_model.predict(x)
+            predictive_dist = model.predict(x)
             mean = predictive_dist.mean  # [S, N]
             std = predictive_dist.stddev  # [S, N]
             log_pi = log_ndtr((mean - best_y) / std)  # [S, N]

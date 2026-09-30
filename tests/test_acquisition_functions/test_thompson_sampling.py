@@ -10,7 +10,6 @@ from decijax.test_functions.continuous_functions import (
     NegativeLogarithmicGoldsteinPrice,
 )
 from decijax.typing import KeyArray
-from decijax.utils import OBJECTIVE
 
 from tests.utils import generate_dummy_conjugate_posterior
 
@@ -47,14 +46,13 @@ def test_thompson_sampling_acquisition_function_same_key_same_function(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
-    models = {OBJECTIVE: model}
     # Deliberately reusing `sample_key` here: drawing with the same key is what the
     # test asserts gives the same sample path.
     ts_acquisition_function_one = ThompsonSampling().build_acquisition_function(
-        models, sample_key
+        model, sample_key
     )
     ts_acquisition_function_two = ThompsonSampling().build_acquisition_function(
-        models, sample_key
+        model, sample_key
     )
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)
@@ -84,13 +82,12 @@ def test_thompson_sampling_acquisition_function_different_key_different_function
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset, num_features=100)
-    models = {OBJECTIVE: model}
     ts_acquisition_builder = ThompsonSampling()
     ts_acquisition_function_one = ts_acquisition_builder.build_acquisition_function(
-        models, sample_one_key
+        model, sample_one_key
     )
     ts_acquisition_function_two = ts_acquisition_builder.build_acquisition_function(
-        models, sample_two_key
+        model, sample_two_key
     )
     test_X = test_target_function.generate_test_points(num_test_points, test_key)
     ts_acquisition_function_one_values = ts_acquisition_function_one(test_X)

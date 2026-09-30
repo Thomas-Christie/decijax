@@ -14,10 +14,7 @@ from decijax.test_functions.continuous_functions import (
     NegativeLogarithmicGoldsteinPrice,
 )
 from decijax.typing import KeyArray
-from decijax.utils import (
-    OBJECTIVE,
-    get_best_latent_observation_val,
-)
+from decijax.utils import get_best_latent_observation_val
 
 from tests.utils import generate_dummy_conjugate_posterior
 
@@ -35,10 +32,9 @@ def test_probability_of_improvement_gives_correct_value_against_erf(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    models = {OBJECTIVE: model}
 
     pi_acquisition_builder = ProbabilityOfImprovement()
-    pi_acquisition = pi_acquisition_builder.build_acquisition_function(models, acq_key)
+    pi_acquisition = pi_acquisition_builder.build_acquisition_function(model, acq_key)
 
     test_X = test_target_function.generate_test_points(num_points=100, key=test_key)
     acquisition_values = pi_acquisition(test_X)
@@ -77,8 +73,7 @@ def test_probability_of_improvement_acquisition_function_correct_values(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    models = {OBJECTIVE: model}
-    pi_fn = ProbabilityOfImprovement().build_acquisition_function(models, acq_key)
+    pi_fn = ProbabilityOfImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     pi = pi_fn(test_x)
     latent_dist = posterior.predict(test_x, dataset)
@@ -109,10 +104,9 @@ def test_log_probability_of_improvement_acquisition_function_correct_values(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    models = {OBJECTIVE: model}
-    pi_fn = ProbabilityOfImprovement().build_acquisition_function(models, pi_acq_key)
+    pi_fn = ProbabilityOfImprovement().build_acquisition_function(model, pi_acq_key)
     log_pi_fn = LogProbabilityOfImprovement().build_acquisition_function(
-        models, log_pi_acq_key
+        model, log_pi_acq_key
     )
     test_x = test_target_function.generate_test_points(100, test_key)
     pi = pi_fn(test_x)

@@ -15,10 +15,7 @@ from decijax.test_functions.continuous_functions import (
     NegativeLogarithmicGoldsteinPrice,
 )
 from decijax.typing import KeyArray
-from decijax.utils import (
-    OBJECTIVE,
-    get_best_latent_observation_val,
-)
+from decijax.utils import get_best_latent_observation_val
 
 from tests.utils import generate_dummy_conjugate_posterior
 
@@ -37,8 +34,7 @@ def test_expected_improvement_acquisition_function_correct_values(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    models = {OBJECTIVE: model}
-    ei_fn = ExpectedImprovement().build_acquisition_function(models, acq_key)
+    ei_fn = ExpectedImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     ei = ei_fn(test_x)
     latent_dist = posterior.predict(test_x, dataset)
@@ -68,10 +64,9 @@ def test_log_expected_improvement_acquisition_function_correct_values(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    models = {OBJECTIVE: model}
-    ei_fn = ExpectedImprovement().build_acquisition_function(models, ei_acq_key)
+    ei_fn = ExpectedImprovement().build_acquisition_function(model, ei_acq_key)
     log_ei_fn = LogExpectedImprovement().build_acquisition_function(
-        models, log_ei_acq_key
+        model, log_ei_acq_key
     )
     test_x = test_target_function.generate_test_points(100, test_key)
     ei = ei_fn(test_x)
@@ -183,9 +178,7 @@ def test_log_expected_improvement_is_jit_and_grad_safe(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    log_ei_fn = LogExpectedImprovement().build_acquisition_function(
-        {OBJECTIVE: model}, acq_key
-    )
+    log_ei_fn = LogExpectedImprovement().build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(10, test_key)
 
     jitted = jax.jit(log_ei_fn)(test_x)

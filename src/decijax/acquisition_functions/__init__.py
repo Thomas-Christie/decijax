@@ -2,7 +2,7 @@
 
 from decijax.acquisition_functions.base import (
     AbstractAcquisitionFunctionBuilder,
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     AcquisitionFunction,
     SinglePointAcquisitionFunction,
 )
@@ -20,7 +20,7 @@ from decijax.acquisition_functions.upper_confidence_bound import UpperConfidence
 __all__ = [
     "AcquisitionFunction",
     "AbstractAcquisitionFunctionBuilder",
-    "AbstractSinglePointAcquisitionFunctionBuilder",
+    "AbstractSingleModelAcquisitionFunctionBuilder",
     "ExpectedImprovement",
     "LogExpectedImprovement",
     "LogProbabilityOfImprovement",

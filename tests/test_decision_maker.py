@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 from decijax.acquisition_functions import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     ThompsonSampling,
 )
 from decijax.acquisition_maximizer import (
@@ -61,7 +61,7 @@ def model_builder() -> GPJaxConjugateGPBuilder:
 
 
 @pytest.fixture
-def acquisition_function_builder() -> AbstractSinglePointAcquisitionFunctionBuilder:
+def acquisition_function_builder() -> AbstractSingleModelAcquisitionFunctionBuilder:
     return QuadraticSinglePointAcquisitionFunctionBuilder()
 
 
@@ -92,7 +92,7 @@ def test_abstract_decision_maker_raises_error():
 def test_invalid_batch_size_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     batch_size: int,
 ):
@@ -117,7 +117,7 @@ def test_invalid_batch_size_raises_error(
 def test_non_thompson_sampling_non_one_batch_size_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -141,7 +141,7 @@ def test_non_thompson_sampling_non_one_batch_size_raises_error(
 def test_invalid_tags_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -162,10 +162,34 @@ def test_invalid_tags_raises_error(
         )
 
 
+def test_missing_objective_tag_raises_error(
+    search_space: AbstractSearchSpace,
+    model_builder: GPJaxConjugateGPBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
+    acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
+):
+    key = jr.key(42)
+    # Tags are consistent between the two dicts, but none of them is OBJECTIVE.
+    model_builders = {CONSTRAINT: model_builder}
+    datasets = {CONSTRAINT: get_dataset(num_points=5, key=jr.key(42))}
+    with pytest.raises(ValueError, match="`OBJECTIVE`-tagged"):
+        AcquisitionDrivenDecisionMaker(
+            search_space=search_space,
+            model_builders=model_builders,
+            datasets=datasets,
+            acquisition_function_builder=acquisition_function_builder,
+            acquisition_maximizer=acquisition_maximizer,
+            key=key,
+            post_ask=[],
+            post_tell=[],
+            batch_size=1,
+        )
+
+
 def test_initialisation_optimizes_model_hyperparameters(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -198,7 +222,7 @@ def test_initialisation_optimizes_model_hyperparameters(
 def test_decision_maker_ask(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -266,7 +290,7 @@ def test_decision_maker_ask_multi_batch_ts(
 def test_decision_maker_tell_with_inconsistent_observations_raises_error(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -301,7 +325,7 @@ def test_decision_maker_tell_with_inconsistent_observations_raises_error(
 def test_decision_maker_tell_updates_datasets_and_models(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
 ):
     key = jr.key(42)
@@ -364,7 +388,7 @@ def test_decision_maker_tell_updates_datasets_and_models(
 def test_decision_maker_run(
     search_space: AbstractSearchSpace,
     model_builder: GPJaxConjugateGPBuilder,
-    acquisition_function_builder: AbstractSinglePointAcquisitionFunctionBuilder,
+    acquisition_function_builder: AbstractSingleModelAcquisitionFunctionBuilder,
     acquisition_maximizer: AbstractSinglePointAcquisitionMaximizer,
     n_steps: int,
 ):

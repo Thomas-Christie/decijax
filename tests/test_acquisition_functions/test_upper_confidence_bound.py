@@ -9,7 +9,6 @@ from decijax.test_functions.continuous_functions import (
     NegativeLogarithmicGoldsteinPrice,
 )
 from decijax.typing import KeyArray
-from decijax.utils import OBJECTIVE
 
 from tests.utils import generate_dummy_conjugate_posterior
 
@@ -31,9 +30,7 @@ def test_upper_confidence_bound_matches_closed_form(
     dataset = test_target_function.generate_dataset(num_points=10, key=data_key)
     posterior = generate_dummy_conjugate_posterior(dataset, test_target_function)
     model = GPJaxConjugateGP(posterior=posterior, dataset=dataset)
-    ucb_fn = UpperConfidenceBound(beta=beta).build_acquisition_function(
-        {OBJECTIVE: model}, acq_key
-    )
+    ucb_fn = UpperConfidenceBound(beta=beta).build_acquisition_function(model, acq_key)
     test_x = test_target_function.generate_test_points(100, test_key)
     ucb = ucb_fn(test_x)
     latent_dist = posterior.predict(test_x, dataset)

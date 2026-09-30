@@ -4,7 +4,7 @@ from abc import (
     ABC,
     abstractmethod,
 )
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import TypeAlias
 
 from jaxtyping import (
@@ -14,7 +14,6 @@ from jaxtyping import (
 
 from decijax.models import ProbabilisticModel
 from decijax.typing import KeyArray
-from decijax.utils import OBJECTIVE
 
 SinglePointAcquisitionFunction: TypeAlias = Callable[
     [Float[Array, "N D"]], Float[Array, "N 1"]
@@ -36,38 +35,20 @@ which point, or batch of points, to query next.
 """
 
 
-class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
-    """Abstract class for building acquisition functions which don't support batches.
-
-    These acquisition functions characterise the utility of querying a single point next.
-    """
-
-    def check_objective_present(
-        self,
-        models: Mapping[str, ProbabilisticModel],
-    ) -> None:
-        """Check that the objective model is present in the models.
-
-        Args:
-            models: dictionary of models to be used to form the acquisition function.
-
-        Raises:
-            ValueError: If the objective model is not present in the models.
-        """
-        if OBJECTIVE not in models.keys():
-            raise ValueError("Objective model not found in models")
+class AbstractSingleModelAcquisitionFunctionBuilder(ABC):
+    """Abstract class for building acquisition functions which require a single model."""
 
     @abstractmethod
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
-        """Build an `AcquisitionFunction` from a set of models.
+        """Build an `AcquisitionFunction` from a model.
 
         Args:
-            models: dictionary of models to be used to form the acquisition function.
-                Each model carries the data it was conditioned on.
+            model: Model used to form the acquisition function, carrying the data it
+                was conditioned on.
             key: JAX PRNG key used for random number generation.
 
         Returns:
@@ -77,9 +58,9 @@ class AbstractSinglePointAcquisitionFunctionBuilder(ABC):
         raise NotImplementedError
 
 
-AbstractAcquisitionFunctionBuilder = AbstractSinglePointAcquisitionFunctionBuilder
+AbstractAcquisitionFunctionBuilder = AbstractSingleModelAcquisitionFunctionBuilder
 """
-Type alias for acquisition function builders. For now this only include single point
-acquisition function builders, but in the future we may support batched acquisition
+Type alias for acquisition function builders. For now this only includes single model
+acquisition function builders, but in the future we may support more acquisition
 function builders.
 """

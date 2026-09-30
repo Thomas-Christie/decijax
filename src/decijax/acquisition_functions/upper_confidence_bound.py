@@ -1,6 +1,5 @@
 """Upper confidence bound acquisition function."""
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 
 import jax.numpy as jnp
@@ -10,7 +9,7 @@ from jaxtyping import (
 )
 
 from decijax.acquisition_functions.base import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
 )
 from decijax.models import (
@@ -18,11 +17,10 @@ from decijax.models import (
     SupportsGaussianPrediction,
 )
 from decijax.typing import KeyArray
-from decijax.utils import OBJECTIVE
 
 
 @dataclass
-class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
+class UpperConfidenceBound(AbstractSingleModelAcquisitionFunctionBuilder):
     r"""Upper Confidence Bound acquisition function from [1].
 
     Given a predictive posterior distribution of the objective function $f$, the
@@ -56,7 +54,7 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         r"""Build the Upper Confidence Bound acquisition function.
@@ -65,10 +63,8 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
         upper confidence bound is computed per sample and averaged.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support Gaussian
-                prediction, as we use the objective posterior to form the acquisition
-                function.
+            model: Model used to form the acquisition function, which must support
+                Gaussian prediction.
             key: JAX PRNG key used for random number generation. Since the upper
                 confidence bound is computed deterministically, the key is not used.
 
@@ -76,19 +72,16 @@ class UpperConfidenceBound(AbstractSinglePointAcquisitionFunctionBuilder):
             The Upper Confidence Bound acquisition function to be *maximised* in
             order to decide which point to query next.
         """
-        self.check_objective_present(models)
-        objective_model = models[OBJECTIVE]
-
-        if not isinstance(objective_model, SupportsGaussianPrediction):
+        if not isinstance(model, SupportsGaussianPrediction):
             raise ValueError(
-                "Objective model must support Gaussian prediction to compute the "
+                "Model must support Gaussian prediction to compute the "
                 "Upper Confidence Bound."
             )
 
         sqrt_beta = jnp.sqrt(self.beta)
 
         def _upper_confidence_bound(x: Float[Array, "N D"]) -> Float[Array, "N 1"]:
-            latent_dist = objective_model.predict(x)
+            latent_dist = model.predict(x)
             mean = latent_dist.mean  # [S, N]
             std = latent_dist.stddev  # [S, N]
             ucb = mean + sqrt_beta * std  # [S, N]

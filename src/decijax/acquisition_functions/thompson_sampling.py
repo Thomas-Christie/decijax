@@ -1,9 +1,7 @@
 """Thompson sampling acquisition function."""
 
-from collections.abc import Mapping
-
 from decijax.acquisition_functions.base import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
 )
 from decijax.models import (
@@ -11,10 +9,9 @@ from decijax.models import (
     SupportsSamplePaths,
 )
 from decijax.typing import KeyArray
-from decijax.utils import OBJECTIVE
 
 
-class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
+class ThompsonSampling(AbstractSingleModelAcquisitionFunctionBuilder):
     """Form an acquisition function by drawing an approximate sample from the posterior.
 
     This uses decoupled sampling as introduced in [Wilson et. al.
@@ -30,33 +27,29 @@ class ThompsonSampling(AbstractSinglePointAcquisitionFunctionBuilder):
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         """Build the Thompson sampling acquisition function.
 
-        Draws an approximate sample path from the posterior of the objective model and
-        returns it as an acquisition function to be *maximised*.
+        Draws an approximate sample path from the posterior of the model and returns it
+        as an acquisition function to be *maximised*.
 
         Args:
-            models: Dictionary of models used to form the acquisition function. One
-                model must correspond to the `OBJECTIVE` key and support differentiable
-                sample paths, as we sample from the objective posterior to form the
+            model: Model used to form the acquisition function, which must support
+                differentiable sample paths, as we sample from the posterior to form the
                 acquisition function.
             key: JAX PRNG key used for random number generation. This can be changed to
                 draw different samples.
 
         Returns:
-            An approximate sample path from the objective model posterior to be
-            *maximised* in order to decide which point to query next.
+            An approximate sample path from the model posterior to be *maximised* in
+            order to decide which point to query next.
         """
-        self.check_objective_present(models)
-
-        objective_model = models[OBJECTIVE]
-        if not isinstance(objective_model, SupportsSamplePaths):
+        if not isinstance(model, SupportsSamplePaths):
             raise ValueError(
-                "Objective model must support differentiable sample paths to draw an "
+                "Model must support differentiable sample paths to draw an "
                 "approximate Thompson sample."
             )
 
-        return objective_model.draw_sample_paths(num_samples=1, key=key)
+        return model.draw_sample_paths(num_samples=1, key=key)

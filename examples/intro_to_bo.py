@@ -9,7 +9,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.3
 #   kernelspec:
-#     display_name: decijax (3.13.5.final.0)
+#     display_name: decijax (3.13.5)
 #     language: python
 #     name: python3
 # ---
@@ -48,7 +48,6 @@ from decijax.acquisition_maximizer import ContinuousSinglePointAcquisitionMaximi
 from decijax.models.builder import GPJaxConjugateGPBuilder
 from decijax.models.gps import GPJaxConjugateGP
 from decijax.search_space import ContinuousSearchSpace
-from decijax.utils import OBJECTIVE
 from jaxtyping import Array, Float
 from matplotlib import cm
 
@@ -355,7 +354,7 @@ def plot_bo_step(
 
 
 # %%
-acquisition_function = ei.build_acquisition_function({OBJECTIVE: opt_posterior}, key)
+acquisition_function = ei.build_acquisition_function(opt_posterior, key)
 key, subkey = jr.split(key)
 next_query = acq_maximizer.maximize(acquisition_function, search_space, subkey)
 plot_bo_step(opt_posterior, dataset, next_query, acquisition_function)
@@ -372,9 +371,7 @@ for _ in range(bo_iters):
     opt_posterior = gp_builder.build(dataset, subkey)
 
     key, subkey = jr.split(key)
-    acquisition_function = ei.build_acquisition_function(
-        {OBJECTIVE: opt_posterior}, subkey
-    )
+    acquisition_function = ei.build_acquisition_function(opt_posterior, subkey)
 
     key, subkey = jr.split(key)
     query_x = acq_maximizer.maximize(acquisition_function, search_space, subkey)
@@ -525,9 +522,7 @@ for experiment in range(num_experiments):
 
         # Build the EI acquisition function and maximise it to pick the next point.
         key, subkey = jr.split(key)
-        acquisition_function = ei.build_acquisition_function(
-            {OBJECTIVE: opt_posterior}, subkey
-        )
+        acquisition_function = ei.build_acquisition_function(opt_posterior, subkey)
         key, subkey = jr.split(key)
         query_x = camel_acq_maximizer.maximize(
             acquisition_function, camel_search_space, subkey
@@ -688,3 +683,5 @@ plt.show()
 # %%
 # %reload_ext watermark
 # %watermark -n -u -v -iv -w -a 'Thomas Christie'
+
+# %%

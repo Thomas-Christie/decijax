@@ -48,9 +48,12 @@ abstractions:
      import from `gpjax`.
 
 2. **Acquisition functions** (`decijax/acquisition_functions/`) —
-   builders take `Mapping[str, ProbabilisticModel]` plus a PRNG key and return
-   a closure `[N, D] -> [N, 1]` to be *maximised*. Models carry their own
-   training data, so builders take no separate `datasets` argument.
+   `AbstractSingleModelAcquisitionFunctionBuilder`s take a single
+   `ProbabilisticModel` plus a PRNG key and return a closure `[N, D] -> [N, 1]`
+   to be *maximised*. Models carry their own training data, so builders take no
+   separate `datasets` argument. `AcquisitionDrivenDecisionMaker` passes them
+   `models[OBJECTIVE]`, so it requires an `OBJECTIVE` tag. Acquisitions needing
+   several models (e.g. constrained BO) will need a separate builder base.
 
 3. **Decision makers** (`decision_maker.py`) — hold the canonical
    original-space `datasets`, the `model_builders`, and the fitted `models`,

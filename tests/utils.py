@@ -1,9 +1,8 @@
-from collections.abc import Mapping
 from typing import Optional
 
 import jax.numpy as jnp
 from decijax.acquisition_functions import (
-    AbstractSinglePointAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     SinglePointAcquisitionFunction,
 )
 from decijax.models import (
@@ -30,7 +29,7 @@ from jaxtyping import (
 
 
 class QuadraticSinglePointAcquisitionFunctionBuilder(
-    AbstractSinglePointAcquisitionFunctionBuilder
+    AbstractSingleModelAcquisitionFunctionBuilder
 ):
     """Dummy acquisition function builder for testing purposes.
 
@@ -40,7 +39,7 @@ class QuadraticSinglePointAcquisitionFunctionBuilder(
 
     def build_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         key: KeyArray,
     ) -> SinglePointAcquisitionFunction:
         test_function = NegativeQuadratic()

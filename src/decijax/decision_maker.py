@@ -15,6 +15,7 @@ from jaxtyping import Array, Float
 
 from decijax.acquisition_functions import (
     AbstractAcquisitionFunctionBuilder,
+    AbstractSingleModelAcquisitionFunctionBuilder,
     ThompsonSampling,
 )
 from decijax.acquisition_maximizer import AbstractAcquisitionMaximizer
@@ -24,7 +25,7 @@ from decijax.models import (
 )
 from decijax.search_space import AbstractSearchSpace
 from decijax.typing import KeyArray
-from decijax.utils import FunctionEvaluator
+from decijax.utils import OBJECTIVE, FunctionEvaluator
 
 
 @dataclass
@@ -39,7 +40,8 @@ class AbstractDecisionMaker(ABC):
     the black-box function of interest at this point.
 
     Attributes:
-        search_space: Search space over which we can evaluate the function(s) of interest.
+        search_space: Search space over which we can evaluate the function(s) of
+            interest.
         model_builders: dictionary of model builders, which are used to (re)fit models
             throughout the decision making loop. These objects are typically referred to
             as `models` in the model-based decision making literature. Tags are used to
@@ -218,19 +220,36 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
     acquisition_maximizer: AbstractAcquisitionMaximizer
 
     def __post_init__(self):
-        """Initialise the base class and validate batch size compatibility.
+        """Validate the acquisition setup, then initialise the base class.
 
         Raises:
-            NotImplementedError: If `batch_size` is greater than 1 with an
-                acquisition function builder other than `ThompsonSampling`.
+            ValueError: If there is no `OBJECTIVE`-tagged model builder and dataset.
+            NotImplementedError: If the acquisition function builder is not an
+                `AbstractSingleModelAcquisitionFunctionBuilder`, or if `batch_size` is
+                greater than 1 with an acquisition function builder other than
+                `ThompsonSampling`.
         """
-        super().__post_init__()
+        if OBJECTIVE not in self.model_builders or OBJECTIVE not in self.datasets:
+            raise ValueError(
+                f"An `{OBJECTIVE}`-tagged dataset and model builder are required. "
+                f"Got model builder tags {list(self.model_builders.keys())} and "
+                f"dataset tags {list(self.datasets.keys())}."
+            )
+        if not isinstance(
+            self.acquisition_function_builder,
+            AbstractSingleModelAcquisitionFunctionBuilder,
+        ):
+            raise NotImplementedError(
+                "Only `AbstractSingleModelAcquisitionFunctionBuilder`s are currently "
+                "supported."
+            )
         if self.batch_size > 1 and not isinstance(
             self.acquisition_function_builder, ThompsonSampling
         ):
             raise NotImplementedError(
                 "Batch size > 1 currently only supported for Thompson sampling."
             )
+        super().__post_init__()
 
     def ask(self, key: KeyArray) -> Float[Array, "B D"]:
         """Form acquisition function(s) and return the point(s) which maximise them.
@@ -253,6 +272,10 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
 
         Returns:
             Point(s) to be queried next.
+
+        Raises:
+            NotImplementedError: If `self.batch_size` != 1 and an acquisition function
+                other than Thompson sampling is used.
         """
         self.current_acquisition_functions = []
         maximizers = []
@@ -268,7 +291,7 @@ class AcquisitionDrivenDecisionMaker(AbstractDecisionMaker):
                 key, acq_fn_key, max_key = jr.split(key, 3)
                 acquisition_function = (
                     self.acquisition_function_builder.build_acquisition_function(
-                        self.models, acq_fn_key
+                        self.models[OBJECTIVE], acq_fn_key
                     )
                 )
                 self.current_acquisition_functions.append(acquisition_function)
