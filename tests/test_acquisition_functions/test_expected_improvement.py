@@ -94,7 +94,7 @@ def test_log_ei_helper_is_stable_in_the_tails():
             -1e3,
             -300.0,
             -100.0,
-            -37.6,  # see test_log_ei_helper_is_accurate_where_erfcx_is_broken
+            -37.6,  # see test_log_ei_helper_is_accurate_in_former_erfcx_failure_band
             -30.0,
             -10.0,
             -3.0,
@@ -150,10 +150,11 @@ def test_log_ei_helper_matches_asymptotic_expansion_in_the_tails():
     assert jnp.allclose(_log_ei_helper(z), expected, rtol=0.0, atol=1e-4)
 
 
-def test_log_ei_helper_is_accurate_where_erfcx_is_broken():
-    # The band where jax.scipy.special.erfcx returns 0.0 maps to z in
-    # [-37.68, -37.54]. Going through it naively gives a silently wrong (finite,
-    # monotone) value, so pin it down against a reworking that reintroduces the bug.
+def test_log_ei_helper_is_accurate_in_former_erfcx_failure_band():
+    # Regression guard for jax-ml/jax#38607: before jax 0.12, erfcx returned 0.0 on
+    # [26.54, 26.64], which maps to z in [-37.68, -37.54]. Going through that band
+    # gave a silently wrong (finite, monotone) value, so pin it down in case the
+    # bug returns in jax or a reworking of the helper reintroduces it.
     z = jnp.linspace(-37.7, -37.5, 501)
     y = 1.0 / z**2
     series = 1.0 - 3.0 * y + 15.0 * y**2 - 105.0 * y**3 + 945.0 * y**4
