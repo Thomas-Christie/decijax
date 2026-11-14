@@ -14,7 +14,7 @@ development, and deployment of decision-making agents.
 > `decijax` is currently under active development, and the API is likely to
 > change in the near future.
 
------
+---
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ development, and deployment of decision-making agents.
 
 ## Installation
 
-`decijax` requires Python 3.11 or later. Install the latest release from PyPI with:
+`decijax` requires Python 3.12 or later. Install the latest release from PyPI with:
 
 ```bash
 pip install decijax
